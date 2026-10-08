@@ -1,11 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>僕の自作ゲーム</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ガクモン - 対戦×勉強</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #f0f4f8;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .hp-bar {
+      background: #e0e0e0;
+      border-radius: 8px;
+      height: 20px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .hp-fill {
+      background: #ff4757;
+      height: 100%;
+      width: 100%;
+      transition: width 0.3s;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      background: #1e90ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn:active {
+      background: #0066cc;
+    }
+    #message {
+      font-weight: bold;
+      margin-top: 15px;
+      font-size: 18px;
+    }
+  </style>
 </head>
 <body>
-  <h1>ゲーム制作スタート！</h1>
-  <p>ここにゲームを作っていきます。</p>
+
+  <div class="card">
+    <h1>⚔️ ガクモン ⚔️</h1>
+    
+    <!-- 敵のHPバー -->
+    <h3>モンスター (HP: <span id="hp-text">100</span>)</h3>
+    <div class="hp-bar">
+      <div id="hp-fill" class="hp-fill"></div>
+    </div>
+
+    <hr>
+
+    <!-- クイズエリア -->
+    <h2 id="question">問題: 7 × 8 = ?</h2>
+    <div id="options">
+      <button class="btn" onclick="checkAnswer(54)">54</button>
+      <button class="btn" onclick="checkAnswer(56)">56</button>
+      <button class="btn" onclick="checkAnswer(64)">64</button>
+    </div>
+
+    <p id="message"></p>
+  </div>
+
+  <script>
+    let enemyHP = 100;
+
+    function checkAnswer(selectedOption) {
+      const message = document.getElementById("message");
+      const hpText = document.getElementById("hp-text");
+      const hpFill = document.getElementById("hp-fill");
+
+      if (selectedOption === 56) {
+        // 正解の場合
+        enemyHP -= 50;
+        if (enemyHP < 0) enemyHP = 0;
+        
+        message.style.color = "green";
+        message.innerText = "✨ 正解！ モンスターに50ダメージ！";
+      } else {
+        // 不正解の場合
+        message.style.color = "red";
+        message.innerText = "❌ 残念！ 不正解...";
+      }
+
+      // HP表示の更新
+      hpText.innerText = enemyHP;
+      hpFill.style.width = enemyHP + "%";
+
+      if (enemyHP === 0) {
+        message.innerText = "🎉 モンスターをたおした！勝利！";
+      }
+    }
+  </script>
+
 </body>
 </html>
