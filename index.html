@@ -268,7 +268,7 @@
         <!-- 敵（右） -->
         <div class="fighter-box">
           <div style="font-size:12px; font-weight:bold;">👾 敵</div>
-          <img id="enemy-battle-img" class="fighter-img aura-N" src="https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/133.png" alt="敵">
+          <img id="enemy-battle-img" class="fighter-img aura-N" src="./IMG_1393.jpeg" alt="敵">
           <div style="font-size:11px;">HP: <span id="enemy-hp-text">100</span></div>
           <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill-enemy"></div></div>
         </div>
@@ -308,14 +308,15 @@
     let ownedMonsters = [];
     let partnerId = null;
 
-    // ガクモンマスターデータ（サンプル画像URL付き）
+    // ガクモンマスターデータ（新キャラ「エンピツン」を追加！）
     const monsterData = [
       { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png" },
       { id: "m2", name: "テクリン", rarity: "N", type: "計算", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png" },
       { id: "m3", name: "パピラス", rarity: "N", type: "国語", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/4.png" },
       { id: "m4", name: "イグニスドラコ", rarity: "R", type: "理科", hp: 150, atk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png" },
       { id: "m5", name: "ボルトロボ", rarity: "R", type: "工学", hp: 150, atk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png" },
-      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合", hp: 200, atk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png" }
+      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合", hp: 200, atk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png" },
+      { id: "m7", name: "エンピツン", rarity: "N", type: "計算", hp: 110, atk: 55, ability: "なし", img: "./IMG_1393.jpeg" }
     ];
 
     // バトル・ダンジョン用変数
