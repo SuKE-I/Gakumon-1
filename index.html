@@ -19,6 +19,14 @@
       border-radius: 12px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
+    .status-bar {
+      background: #eef2f5;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-weight: bold;
+      color: #333;
+    }
     .hp-bar {
       background: #e0e0e0;
       border-radius: 8px;
@@ -47,6 +55,12 @@
     .btn:active {
       background: #0066cc;
     }
+    .reset-btn {
+      background: #95a5a6;
+      font-size: 12px;
+      padding: 6px;
+      margin-top: 20px;
+    }
     #message {
       font-weight: bold;
       margin-top: 15px;
@@ -59,6 +73,11 @@
   <div class="card">
     <h1>⚔️ ガクモン ⚔️</h1>
     
+    <!-- プレイヤーのステータス表示（セーブ対象） -->
+    <div class="status-bar">
+      🎓 所持ポイント: <span id="user-points">0</span> pt
+    </div>
+
     <!-- 敵のHPバー -->
     <h3>モンスター (HP: <span id="hp-text">100</span>)</h3>
     <div class="hp-bar">
@@ -76,35 +95,79 @@
     </div>
 
     <p id="message"></p>
+
+    <!-- テスト用データリセットボタン -->
+    <button class="btn reset-btn" onclick="resetData()">セーブデータを初期化</button>
   </div>
 
   <script>
+    // プレイヤーデータ
+    let userPoints = 0;
     let enemyHP = 100;
 
+    // ページ読み込み時にセーブデータを読み込む
+    window.onload = function() {
+      loadData();
+    };
+
+    // セーブデータを読み込む関数
+    function loadData() {
+      const savedPoints = localStorage.getItem("gakumon_points");
+      if (savedPoints !== null) {
+        userPoints = parseInt(savedPoints, 10);
+      } else {
+        userPoints = 0;
+      }
+      updateUI();
+    }
+
+    // セーブデータを保存する関数
+    function saveData() {
+      localStorage.setItem("gakumon_points", userPoints);
+    }
+
+    // 画面の表示を更新する関数
+    function updateUI() {
+      document.getElementById("user-points").innerText = userPoints;
+      document.getElementById("hp-text").innerText = enemyHP;
+      document.getElementById("hp-fill").style.width = enemyHP + "%";
+    }
+
+    // 回答チェック関数
     function checkAnswer(selectedOption) {
       const message = document.getElementById("message");
-      const hpText = document.getElementById("hp-text");
-      const hpFill = document.getElementById("hp-fill");
 
       if (selectedOption === 56) {
         // 正解の場合
         enemyHP -= 50;
         if (enemyHP < 0) enemyHP = 0;
         
+        userPoints += 10; // ポイント獲得！
+        saveData();       // ポイントをセーブ！
+
         message.style.color = "green";
-        message.innerText = "✨ 正解！ モンスターに50ダメージ！";
+        message.innerText = "✨ 正解！ 50ダメージ ＆ 10pt獲得！";
       } else {
         // 不正解の場合
         message.style.color = "red";
         message.innerText = "❌ 残念！ 不正解...";
       }
 
-      // HP表示の更新
-      hpText.innerText = enemyHP;
-      hpFill.style.width = enemyHP + "%";
+      updateUI();
 
       if (enemyHP === 0) {
         message.innerText = "🎉 モンスターをたおした！勝利！";
+      }
+    }
+
+    // テスト用：セーブデータリセット機能
+    function resetData() {
+      if (confirm("セーブデータを初期化しますか？")) {
+        localStorage.removeItem("gakumon_points");
+        userPoints = 0;
+        enemyHP = 100;
+        updateUI();
+        document.getElementById("message").innerText = "データをリセットしました。";
       }
     }
   </script>
