@@ -62,8 +62,8 @@
     }
     .nav-btn {
       flex: 1;
-      padding: 10px;
-      font-size: 14px;
+      padding: 8px 4px;
+      font-size: 12px;
       border: none;
       background: #dfe4ea;
       border-radius: 6px;
@@ -90,6 +90,7 @@
     .btn-easy { background: #2ed573; }
     .btn-medium { background: #ffa502; }
     .btn-hard { background: #ff4757; }
+    .btn-dungeon { background: #8e44ad; font-weight: bold; }
     .btn-gacha { background: #9b59b6; font-size: 18px; font-weight: bold; }
     .btn-back { background: #747d8c; margin-top: 15px; }
     .btn-select { background: #ffa502; padding: 4px 8px; font-size: 12px; width: auto; display: inline-block; margin: 0; }
@@ -134,6 +135,14 @@
     .rarity-SR { color: #e67e22; font-weight: bold; }
     .rarity-R { color: #2980b9; font-weight: bold; }
     .rarity-N { color: #27ae60; font-weight: bold; }
+    .dungeon-info {
+      background: #f3e5f5;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: #4a148c;
+    }
   </style>
 </head>
 <body>
@@ -154,8 +163,9 @@
     <!-- メニュータブ -->
     <div class="nav-tabs">
       <button class="nav-btn active" id="tab-stage" onclick="switchTab('stage')">⚔️ ステージ</button>
+      <button class="nav-btn" id="tab-dungeon" onclick="switchTab('dungeon')">🏰 ダンジョン</button>
       <button class="nav-btn" id="tab-gacha" onclick="switchTab('gacha')">🎁 ガチャ</button>
-      <button class="nav-btn" id="tab-list" onclick="switchTab('list')">📜 所持ガクモン</button>
+      <button class="nav-btn" id="tab-list" onclick="switchTab('list')">📜 所持</button>
     </div>
 
     <!-- 1. ステージ選択画面 -->
@@ -166,9 +176,19 @@
       <button class="btn btn-hard" onclick="startStage('hard')">👑 上級 (少しむずかしい計算) [+50pt]</button>
     </div>
 
-    <!-- 2. バトル・クイズ画面 -->
+    <!-- 2. ダンジョン選択画面 -->
+    <div id="dungeon-select-screen" class="hidden">
+      <h3>🏰 難関大学ダンジョン</h3>
+      <div class="dungeon-info">
+        全問正解してダンジョンを完全攻略しよう！<br>途中で倒れると報酬は手に入りません。
+      </div>
+      <button class="btn btn-dungeon" onclick="startDungeon('tokyo')">🎓 東京大学ダンジョン (全5問) [+300pt]</button>
+    </div>
+
+    <!-- 3. バトル・クイズ画面 -->
     <div id="battle-screen" class="hidden">
       <h3 id="stage-title">ステージ</h3>
+      <div id="dungeon-progress" style="font-weight:bold; color:#8e44ad; margin-bottom:5px;"></div>
       
       <!-- 敵HP -->
       <div style="font-size:14px; text-align:left;">👾 敵モンスター (HP: <span id="enemy-hp-text">100</span>)</div>
@@ -187,10 +207,10 @@
       <h2 id="question">問題: </h2>
       <div id="options"></div>
 
-      <button class="btn btn-back" onclick="showStageSelect()">ステージ選択に戻る</button>
+      <button class="btn btn-back" onclick="showStageSelect()">あきらめて戻る</button>
     </div>
 
-    <!-- 3. ガチャ画面 -->
+    <!-- 4. ガチャ画面 -->
     <div id="gacha-screen" class="hidden">
       <h3>ガクモンガチャ</h3>
       <p>1回 <b>100 pt</b> で引き当てよう！</p>
@@ -198,7 +218,7 @@
       <div id="gacha-result" class="gacha-result hidden"></div>
     </div>
 
-    <!-- 4. 所持ガクモンリスト画面 -->
+    <!-- 5. 所持ガクモンリスト画面 -->
     <div id="list-screen" class="hidden">
       <h3>所持ガクモン一覧</h3>
       <div id="monster-list" class="monster-list"></div>
@@ -216,7 +236,7 @@
     let ownedMonsters = []; // 所持ガクモンIDのリスト
     let partnerId = null;   // セット中のガクモンID
 
-    // ガクモンマスターデータ（ステータス・能力追加）
+    // ガクモンマスターデータ
     const monsterData = [
       { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学", hp: 100, atk: 50, ability: "なし" },
       { id: "m2", name: "テクリン", rarity: "N", type: "計算", hp: 100, atk: 50, ability: "なし" },
@@ -226,8 +246,11 @@
       { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合", hp: 200, atk: 70, ability: "会心（一定確率で2倍ダメ）" }
     ];
 
-    // バトル用変数
+    // バトル・ダンジョン用変数
     let currentStage = "";
+    let isDungeonMode = false;
+    let dungeonStep = 0;
+    let dungeonTotalSteps = 5;
     let stageReward = 0;
     let enemyHP = 100;
     let enemyMaxHP = 100;
@@ -252,6 +275,13 @@
         { q: "(12 + 8) × 3 = ?", options: [60, 50, 40], a: 60 },
         { q: "100 - 15 × 4 = ?", options: [40, 60, 30], a: 40 },
         { q: "150 ÷ 5 + 20 = ?", options: [50, 40, 60], a: 50 }
+      ],
+      dungeon: [
+        { q: "3x + 5 = 20 のとき、x は？", options: [5, 4, 6], a: 5 },
+        { q: "半径 3cm の円の面積は？ (円周率3.14)", options: [28.26, 18.84, 31.4], a: 28.26 },
+        { q: "25 × 12 = ?", options: [300, 250, 350], a: 300 },
+        { q: "(4 + 6) × (8 - 3) = ?", options: [50, 45, 60], a: 50 },
+        { q: "1, 2, 4, 8, 16 の次に入る数は？", options: [32, 24, 64], a: 32 }
       ]
     };
 
@@ -269,7 +299,6 @@
 
       partnerId = localStorage.getItem("gakumon_partner");
 
-      // 初期状態で何か持っていれば自動セット
       if (!partnerId && ownedMonsters.length > 0) {
         partnerId = ownedMonsters[0];
       }
@@ -286,7 +315,6 @@
     function updateUI() {
       document.getElementById("user-points").innerText = userPoints;
 
-      // パートナー表示更新
       const partner = monsterData.find(m => m.id === partnerId);
       if (partner) {
         document.getElementById("partner-name").innerHTML = `<span class="rarity-${partner.rarity}">[${partner.rarity}] ${partner.name}</span> (HP:${partner.hp} / 攻:${partner.atk})`;
@@ -294,7 +322,6 @@
         document.getElementById("partner-name").innerText = "未セット";
       }
 
-      // バトル画面ステータス
       document.getElementById("enemy-hp-text").innerText = enemyHP;
       document.getElementById("enemy-hp-fill").style.width = Math.max(0, (enemyHP / enemyMaxHP) * 100) + "%";
 
@@ -307,11 +334,13 @@
     // タブ切り替え
     function switchTab(tabName) {
       document.getElementById("stage-select-screen").classList.add("hidden");
+      document.getElementById("dungeon-select-screen").classList.add("hidden");
       document.getElementById("battle-screen").classList.add("hidden");
       document.getElementById("gacha-screen").classList.add("hidden");
       document.getElementById("list-screen").classList.add("hidden");
 
       document.getElementById("tab-stage").classList.remove("active");
+      document.getElementById("tab-dungeon").classList.remove("active");
       document.getElementById("tab-gacha").classList.remove("active");
       document.getElementById("tab-list").classList.remove("active");
 
@@ -320,6 +349,9 @@
       if (tabName === 'stage') {
         document.getElementById("stage-select-screen").classList.remove("hidden");
         document.getElementById("tab-stage").classList.add("active");
+      } else if (tabName === 'dungeon') {
+        document.getElementById("dungeon-select-screen").classList.remove("hidden");
+        document.getElementById("tab-dungeon").classList.add("active");
       } else if (tabName === 'gacha') {
         document.getElementById("gacha-screen").classList.remove("hidden");
         document.getElementById("tab-gacha").classList.add("active");
@@ -338,24 +370,16 @@
       document.getElementById("message").innerText = "パートナーを変更しました！";
     }
 
-    // ステージ開始
+    // 通常ステージ開始
     function startStage(difficulty) {
+      isDungeonMode = false;
       currentStage = difficulty;
       enemyHP = 100;
       enemyMaxHP = 100;
+      document.getElementById("dungeon-progress").innerText = "";
       document.getElementById("message").innerText = "";
 
-      // パートナーのステータス適用
-      const partner = monsterData.find(m => m.id === partnerId);
-      if (partner) {
-        playerHP = partner.hp;
-        playerMaxHP = partner.hp;
-        playerATK = partner.atk;
-      } else {
-        playerHP = 100;
-        playerMaxHP = 100;
-        playerATK = 50;
-      }
+      initBattleStatus();
 
       if (difficulty === 'easy') {
         stageReward = 10;
@@ -377,10 +401,50 @@
       updateUI();
     }
 
+    // ダンジョン開始
+    function startDungeon(type) {
+      isDungeonMode = true;
+      dungeonStep = 1;
+      stageReward = 300;
+      enemyHP = 120;
+      enemyMaxHP = 120;
+      document.getElementById("message").innerText = "";
+
+      initBattleStatus();
+
+      document.getElementById("stage-title").innerText = "🎓 東京大学ダンジョン";
+      document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
+
+      document.getElementById("dungeon-select-screen").classList.add("hidden");
+      document.getElementById("battle-screen").classList.remove("hidden");
+
+      nextQuestion();
+      updateUI();
+    }
+
+    function initBattleStatus() {
+      const partner = monsterData.find(m => m.id === partnerId);
+      if (partner) {
+        playerHP = partner.hp;
+        playerMaxHP = partner.hp;
+        playerATK = partner.atk;
+      } else {
+        playerHP = 100;
+        playerMaxHP = 100;
+        playerATK = 50;
+      }
+    }
+
     // 次の問題
     function nextQuestion() {
-      const questions = quizData[currentStage];
-      currentQuiz = questions[Math.floor(Math.random() * questions.length)];
+      let questions = [];
+      if (isDungeonMode) {
+        questions = quizData.dungeon;
+        currentQuiz = questions[(dungeonStep - 1) % questions.length];
+      } else {
+        questions = quizData[currentStage];
+        currentQuiz = questions[Math.floor(Math.random() * questions.length)];
+      }
 
       document.getElementById("question").innerText = "問題: " + currentQuiz.q;
       
@@ -406,7 +470,6 @@
         let damage = playerATK;
         let isCritical = false;
 
-        // SR固有の特殊能力：30%の確率でクリティカル（2倍ダメージ）
         if (partner && partner.rarity === "SR" && Math.random() < 0.3) {
           damage *= 2;
           isCritical = true;
@@ -421,17 +484,34 @@
           : `✨ 正解！ モンスターに${damage}ダメージ！`;
 
         if (enemyHP === 0) {
-          userPoints += stageReward;
-          saveData();
-          message.innerText = `🎉 モンスターを倒した！クリア報酬: ${stageReward}pt ゲット！`;
-          setTimeout(() => {
-            showStageSelect();
-          }, 2000);
+          if (isDungeonMode) {
+            if (dungeonStep >= dungeonTotalSteps) {
+              // ダンジョン全クリア！
+              userPoints += stageReward;
+              saveData();
+              message.innerText = `🎉 ダンジョン完全クリア！ 特別報酬: ${stageReward}pt ゲット！`;
+              setTimeout(() => { showStageSelect(); }, 2500);
+            } else {
+              // 次の階層へ
+              dungeonStep++;
+              enemyHP = 120 + (dungeonStep * 10);
+              enemyMaxHP = enemyHP;
+              document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
+              message.innerText = `✨ 敵を撃破！第 ${dungeonStep} 階層に進みます！`;
+              nextQuestion();
+            }
+          } else {
+            // 通常ステージクリア
+            userPoints += stageReward;
+            saveData();
+            message.innerText = `🎉 モンスターを倒した！クリア報酬: ${stageReward}pt ゲット！`;
+            setTimeout(() => { showStageSelect(); }, 2000);
+          }
         } else {
           nextQuestion();
         }
       } else {
-        // 不正解：プレイヤーがダメージを受ける
+        // 不正解
         playerHP -= 30;
         if (playerHP < 0) playerHP = 0;
 
@@ -439,10 +519,8 @@
         message.innerText = "❌ 不正解！ 30のダメージを受けた！";
 
         if (playerHP === 0) {
-          message.innerText = "💀 HPが0になった... ステージ失敗！";
-          setTimeout(() => {
-            showStageSelect();
-          }, 2000);
+          message.innerText = "💀 HPが0になった... 攻略失敗！";
+          setTimeout(() => { showStageSelect(); }, 2000);
         } else {
           nextQuestion();
         }
@@ -484,7 +562,6 @@
         ownedMonsters.push(drawnMonster.id);
       }
 
-      // パートナー未セットなら自動セット
       if (!partnerId) partnerId = drawnMonster.id;
 
       saveData();
