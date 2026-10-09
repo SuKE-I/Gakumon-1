@@ -13,7 +13,7 @@
     }
     .card {
       background: white;
-      max-width: 400px;
+      max-width: 420px;
       margin: 0 auto;
       padding: 20px;
       border-radius: 12px;
@@ -55,6 +55,11 @@
     .btn:active {
       background: #0066cc;
     }
+    .btn-easy { background: #2ed573; }
+    .btn-medium { background: #ffa502; }
+    .btn-hard { background: #ff4757; }
+    .btn-back { background: #747d8c; margin-top: 15px; }
+    
     .reset-btn {
       background: #95a5a6;
       font-size: 12px;
@@ -66,6 +71,9 @@
       margin-top: 15px;
       font-size: 18px;
     }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -73,25 +81,33 @@
   <div class="card">
     <h1>⚔️ ガクモン ⚔️</h1>
     
-    <!-- プレイヤーのステータス表示（セーブ対象） -->
+    <!-- プレイヤーのステータス表示 -->
     <div class="status-bar">
       🎓 所持ポイント: <span id="user-points">0</span> pt
     </div>
 
-    <!-- 敵のHPバー -->
-    <h3>モンスター (HP: <span id="hp-text">100</span>)</h3>
-    <div class="hp-bar">
-      <div id="hp-fill" class="hp-fill"></div>
+    <!-- 1. ステージ選択画面 -->
+    <div id="stage-select-screen">
+      <h3>挑戦するステージを選ぼう！</h3>
+      <button class="btn btn-easy" onclick="startStage('easy')">🌱 初級 (たし算・ひき算) [+10pt]</button>
+      <button class="btn btn-medium" onclick="startStage('medium')">🔥 中級 (かけ算・わり算) [+30pt]</button>
+      <button class="btn btn-hard" onclick="startStage('hard')">👑 上級 (少しむずかしい計算) [+50pt]</button>
     </div>
 
-    <hr>
+    <!-- 2. バトル・クイズ画面 -->
+    <div id="battle-screen" class="hidden">
+      <h3 id="stage-title">ステージ</h3>
+      <h4>敵モンスター (HP: <span id="hp-text">100</span>)</h4>
+      <div class="hp-bar">
+        <div id="hp-fill" class="hp-fill"></div>
+      </div>
 
-    <!-- クイズエリア -->
-    <h2 id="question">問題: 7 × 8 = ?</h2>
-    <div id="options">
-      <button class="btn" onclick="checkAnswer(54)">54</button>
-      <button class="btn" onclick="checkAnswer(56)">56</button>
-      <button class="btn" onclick="checkAnswer(64)">64</button>
+      <hr>
+
+      <h2 id="question">問題: </h2>
+      <div id="options"></div>
+
+      <button class="btn btn-back" onclick="showStageSelect()">ステージ選択に戻る</button>
     </div>
 
     <p id="message"></p>
@@ -103,69 +119,141 @@
   <script>
     // プレイヤーデータ
     let userPoints = 0;
+    
+    // バトル用変数
+    let currentStage = "";
+    let stageReward = 0;
     let enemyHP = 100;
+    let currentQuiz = null;
 
-    // ページ読み込み時にセーブデータを読み込む
+    // クイズ問題集（難易度別）
+    const quizData = {
+      easy: [
+        { q: "15 + 27 = ?", options: [42, 32, 52], a: 42 },
+        { q: "50 - 18 = ?", options: [32, 28, 38], a: 32 },
+        { q: "8 + 9 = ?", options: [17, 16, 18], a: 17 }
+      ],
+      medium: [
+        { q: "7 × 8 = ?", options: [56, 54, 64], a: 56 },
+        { q: "72 ÷ 9 = ?", options: [8, 7, 9], a: 8 },
+        { q: "12 × 4 = ?", options: [48, 44, 52], a: 48 }
+      ],
+      hard: [
+        { q: "(12 + 8) × 3 = ?", options: [60, 50, 40], a: 60 },
+        { q: "100 - 15 × 4 = ?", options: [40, 60, 30], a: 40 },
+        { q: "150 ÷ 5 + 20 = ?", options: [50, 40, 60], a: 50 }
+      ]
+    };
+
+    // 初期化ロード
     window.onload = function() {
       loadData();
     };
 
-    // セーブデータを読み込む関数
     function loadData() {
       const savedPoints = localStorage.getItem("gakumon_points");
-      if (savedPoints !== null) {
-        userPoints = parseInt(savedPoints, 10);
-      } else {
-        userPoints = 0;
-      }
+      userPoints = savedPoints !== null ? parseInt(savedPoints, 10) : 0;
       updateUI();
     }
 
-    // セーブデータを保存する関数
     function saveData() {
       localStorage.setItem("gakumon_points", userPoints);
     }
 
-    // 画面の表示を更新する関数
     function updateUI() {
       document.getElementById("user-points").innerText = userPoints;
       document.getElementById("hp-text").innerText = enemyHP;
       document.getElementById("hp-fill").style.width = enemyHP + "%";
     }
 
-    // 回答チェック関数
-    function checkAnswer(selectedOption) {
+    // ステージ開始
+    function startStage(difficulty) {
+      currentStage = difficulty;
+      enemyHP = 100;
+      document.getElementById("message").innerText = "";
+
+      if (difficulty === 'easy') {
+        stageReward = 10;
+        document.getElementById("stage-title").innerText = "🌱 初級ステージ";
+      } else if (difficulty === 'medium') {
+        stageReward = 30;
+        document.getElementById("stage-title").innerText = "🔥 中級ステージ";
+      } else if (difficulty === 'hard') {
+        stageReward = 50;
+        document.getElementById("stage-title").innerText = "👑 上級ステージ";
+      }
+
+      document.getElementById("stage-select-screen").classList.add("hidden");
+      document.getElementById("battle-screen").classList.remove("hidden");
+
+      nextQuestion();
+      updateUI();
+    }
+
+    // 次の問題をセット
+    function nextQuestion() {
+      const questions = quizData[currentStage];
+      currentQuiz = questions[Math.floor(Math.random() * questions.length)];
+
+      document.getElementById("question").innerText = "問題: " + currentQuiz.q;
+      
+      const optionsDiv = document.getElementById("options");
+      optionsDiv.innerHTML = "";
+
+      // 選択肢ボタンを生成（シャッフル）
+      const shuffledOptions = [...currentQuiz.options].sort(() => Math.random() - 0.5);
+      shuffledOptions.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.innerText = opt;
+        btn.onclick = () => checkAnswer(opt);
+        optionsDiv.appendChild(btn);
+      });
+    }
+
+    // 回答チェック
+    function checkAnswer(selected) {
       const message = document.getElementById("message");
 
-      if (selectedOption === 56) {
-        // 正解の場合
+      if (selected === currentQuiz.a) {
         enemyHP -= 50;
         if (enemyHP < 0) enemyHP = 0;
         
-        userPoints += 10; // ポイント獲得！
-        saveData();       // ポイントをセーブ！
-
         message.style.color = "green";
-        message.innerText = "✨ 正解！ 50ダメージ ＆ 10pt獲得！";
+        message.innerText = "✨ 正解！ モンスターに50ダメージ！";
+
+        if (enemyHP === 0) {
+          userPoints += stageReward;
+          saveData();
+          message.innerText = `🎉 モンスターを倒した！クリア報酬: ${stageReward}pt ゲット！`;
+          setTimeout(() => {
+            showStageSelect();
+          }, 2000);
+        } else {
+          nextQuestion();
+        }
       } else {
-        // 不正解の場合
         message.style.color = "red";
-        message.innerText = "❌ 残念！ 不正解...";
+        message.innerText = "❌ 不正解... もう一度挑戦しよう！";
       }
 
       updateUI();
-
-      if (enemyHP === 0) {
-        message.innerText = "🎉 モンスターをたおした！勝利！";
-      }
     }
 
-    // テスト用：セーブデータリセット機能
+    // ステージ選択に戻る
+    function showStageSelect() {
+      document.getElementById("battle-screen").classList.add("hidden");
+      document.getElementById("stage-select-screen").classList.remove("hidden");
+      document.getElementById("message").innerText = "";
+      updateUI();
+    }
+
+    // データリセット
     function resetData() {
       if (confirm("セーブデータを初期化しますか？")) {
         localStorage.removeItem("gakumon_points");
         userPoints = 0;
-        enemyHP = 100;
+        showStageSelect();
         updateUI();
         document.getElementById("message").innerText = "データをリセットしました。";
       }
