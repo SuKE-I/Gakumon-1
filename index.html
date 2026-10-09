@@ -29,18 +29,29 @@
     }
     .partner-box {
       background: #eccc68;
-      padding: 8px;
-      border-radius: 6px;
+      padding: 10px;
+      border-radius: 8px;
       margin-bottom: 10px;
       font-size: 14px;
       font-weight: bold;
       color: #2f3542;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .partner-box img {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: white;
+      object-fit: cover;
     }
     .hp-bar {
       background: #e0e0e0;
       border-radius: 8px;
-      height: 18px;
-      margin: 6px 0;
+      height: 16px;
+      margin: 4px 0 10px 0;
       overflow: hidden;
     }
     .hp-fill-enemy {
@@ -93,7 +104,7 @@
     .btn-dungeon { background: #8e44ad; font-weight: bold; }
     .btn-gacha { background: #9b59b6; font-size: 18px; font-weight: bold; }
     .btn-back { background: #747d8c; margin-top: 15px; }
-    .btn-select { background: #ffa502; padding: 4px 8px; font-size: 12px; width: auto; display: inline-block; margin: 0; }
+    .btn-select { background: #ffa502; padding: 6px 10px; font-size: 12px; width: auto; display: inline-block; margin: 0; }
     
     .reset-btn {
       background: #95a5a6;
@@ -104,9 +115,40 @@
     #message {
       font-weight: bold;
       margin-top: 15px;
-      font-size: 18px;
+      font-size: 16px;
     }
     .hidden { display: none; }
+
+    /* バトルイラスト対戦エリア */
+    .battle-arena {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin: 15px 0;
+    }
+    .fighter-box {
+      width: 45%;
+    }
+    .fighter-img {
+      width: 90px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    /* レアリティ別のオーラ（CSS効果） */
+    .aura-SR {
+      border: 3px solid #f39c12;
+      box-shadow: 0 0 12px #f1c40f;
+    }
+    .aura-R {
+      border: 3px solid #2980b9;
+      box-shadow: 0 0 10px #3498db;
+    }
+    .aura-N {
+      border: 3px solid #27ae60;
+    }
 
     /* ガチャ・図鑑用スタイル */
     .gacha-result {
@@ -114,15 +156,22 @@
       padding: 15px;
       border-radius: 8px;
       margin: 15px 0;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
+    }
+    .gacha-img {
+      width: 120px;
+      height: 120px;
+      margin-top: 10px;
+      object-fit: cover;
+      border-radius: 12px;
     }
     .monster-list {
       text-align: left;
       background: #f8f9fa;
       padding: 10px;
       border-radius: 8px;
-      max-height: 220px;
+      max-height: 240px;
       overflow-y: auto;
     }
     .monster-item {
@@ -131,6 +180,17 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+    }
+    .monster-item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .monster-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      object-fit: cover;
     }
     .rarity-SR { color: #e67e22; font-weight: bold; }
     .rarity-R { color: #2980b9; font-weight: bold; }
@@ -157,7 +217,10 @@
 
     <!-- パートナー表示 -->
     <div class="partner-box">
-      🐾 パートナー: <span id="partner-name">なし</span>
+      <img id="partner-img" src="" alt="パートナー" class="hidden">
+      <div>
+        🐾 パートナー: <span id="partner-name">なし</span>
+      </div>
     </div>
 
     <!-- メニュータブ -->
@@ -190,16 +253,25 @@
       <h3 id="stage-title">ステージ</h3>
       <div id="dungeon-progress" style="font-weight:bold; color:#8e44ad; margin-bottom:5px;"></div>
       
-      <!-- 敵HP -->
-      <div style="font-size:14px; text-align:left;">👾 敵モンスター (HP: <span id="enemy-hp-text">100</span>)</div>
-      <div class="hp-bar">
-        <div id="enemy-hp-fill" class="hp-fill-enemy"></div>
-      </div>
+      <!-- イラスト対戦エリア -->
+      <div class="battle-arena">
+        <!-- プレイヤー（左） -->
+        <div class="fighter-box">
+          <div style="font-size:12px; font-weight:bold;">🛡️ あなた</div>
+          <img id="player-battle-img" class="fighter-img" src="" alt="自分">
+          <div style="font-size:11px;">HP: <span id="player-hp-text">100</span></div>
+          <div class="hp-bar"><div id="player-hp-fill" class="hp-fill-player"></div></div>
+        </div>
 
-      <!-- プレイヤーHP -->
-      <div style="font-size:14px; text-align:left; margin-top:8px;">🛡️ 自分のHP (HP: <span id="player-hp-text">100</span>)</div>
-      <div class="hp-bar">
-        <div id="player-hp-fill" class="hp-fill-player"></div>
+        <div style="font-size:20px; font-weight:bold; color:#ff4757;">VS</div>
+
+        <!-- 敵（右） -->
+        <div class="fighter-box">
+          <div style="font-size:12px; font-weight:bold;">👾 敵</div>
+          <img id="enemy-battle-img" class="fighter-img aura-N" src="https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/133.png" alt="敵">
+          <div style="font-size:11px;">HP: <span id="enemy-hp-text">100</span></div>
+          <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill-enemy"></div></div>
+        </div>
       </div>
 
       <hr>
@@ -233,17 +305,17 @@
   <script>
     // プレイヤーデータ
     let userPoints = 0;
-    let ownedMonsters = []; // 所持ガクモンIDのリスト
-    let partnerId = null;   // セット中のガクモンID
+    let ownedMonsters = [];
+    let partnerId = null;
 
-    // ガクモンマスターデータ
+    // ガクモンマスターデータ（サンプル画像URL付き）
     const monsterData = [
-      { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学", hp: 100, atk: 50, ability: "なし" },
-      { id: "m2", name: "テクリン", rarity: "N", type: "計算", hp: 100, atk: 50, ability: "なし" },
-      { id: "m3", name: "パピラス", rarity: "N", type: "国語", hp: 100, atk: 50, ability: "なし" },
-      { id: "m4", name: "イグニスドラコ", rarity: "R", type: "理科", hp: 150, atk: 60, ability: "HP・攻撃アップ" },
-      { id: "m5", name: "ボルトロボ", rarity: "R", type: "工学", hp: 150, atk: 60, ability: "HP・攻撃アップ" },
-      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合", hp: 200, atk: 70, ability: "会心（一定確率で2倍ダメ）" }
+      { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png" },
+      { id: "m2", name: "テクリン", rarity: "N", type: "計算", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png" },
+      { id: "m3", name: "パピラス", rarity: "N", type: "国語", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/4.png" },
+      { id: "m4", name: "イグニスドラコ", rarity: "R", type: "理科", hp: 150, atk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png" },
+      { id: "m5", name: "ボルトロボ", rarity: "R", type: "工学", hp: 150, atk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png" },
+      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合", hp: 200, atk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png" }
     ];
 
     // バトル・ダンジョン用変数
@@ -315,11 +387,17 @@
     function updateUI() {
       document.getElementById("user-points").innerText = userPoints;
 
+      // パートナー表示更新
       const partner = monsterData.find(m => m.id === partnerId);
+      const partnerImg = document.getElementById("partner-img");
+
       if (partner) {
         document.getElementById("partner-name").innerHTML = `<span class="rarity-${partner.rarity}">[${partner.rarity}] ${partner.name}</span> (HP:${partner.hp} / 攻:${partner.atk})`;
+        partnerImg.src = partner.img;
+        partnerImg.className = `monster-thumb aura-${partner.rarity}`;
       } else {
         document.getElementById("partner-name").innerText = "未セット";
+        partnerImg.className = "hidden";
       }
 
       document.getElementById("enemy-hp-text").innerText = enemyHP;
@@ -424,14 +502,20 @@
 
     function initBattleStatus() {
       const partner = monsterData.find(m => m.id === partnerId);
+      const playerImg = document.getElementById("player-battle-img");
+
       if (partner) {
         playerHP = partner.hp;
         playerMaxHP = partner.hp;
         playerATK = partner.atk;
+        playerImg.src = partner.img;
+        playerImg.className = `fighter-img aura-${partner.rarity}`;
       } else {
         playerHP = 100;
         playerMaxHP = 100;
         playerATK = 50;
+        playerImg.src = "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/0.png";
+        playerImg.className = "fighter-img aura-N";
       }
     }
 
@@ -486,13 +570,11 @@
         if (enemyHP === 0) {
           if (isDungeonMode) {
             if (dungeonStep >= dungeonTotalSteps) {
-              // ダンジョン全クリア！
               userPoints += stageReward;
               saveData();
               message.innerText = `🎉 ダンジョン完全クリア！ 特別報酬: ${stageReward}pt ゲット！`;
               setTimeout(() => { showStageSelect(); }, 2500);
             } else {
-              // 次の階層へ
               dungeonStep++;
               enemyHP = 120 + (dungeonStep * 10);
               enemyMaxHP = enemyHP;
@@ -501,7 +583,6 @@
               nextQuestion();
             }
           } else {
-            // 通常ステージクリア
             userPoints += stageReward;
             saveData();
             message.innerText = `🎉 モンスターを倒した！クリア報酬: ${stageReward}pt ゲット！`;
@@ -511,7 +592,6 @@
           nextQuestion();
         }
       } else {
-        // 不正解
         playerHP -= 30;
         if (playerHP < 0) playerHP = 0;
 
@@ -569,7 +649,11 @@
 
       msg.innerText = "";
       resultDiv.classList.remove("hidden");
-      resultDiv.innerHTML = `🎉 ガチャ結果 🎉<br><span class="rarity-${drawnMonster.rarity}">[${drawnMonster.rarity}] ${drawnMonster.name}</span> を手に入れた！`;
+      resultDiv.innerHTML = `
+        🎉 ガチャ結果 🎉<br>
+        <img class="gacha-img aura-${drawnMonster.rarity}" src="${drawnMonster.img}"><br>
+        <span class="rarity-${drawnMonster.rarity}">[${drawnMonster.rarity}] ${drawnMonster.name}</span> を手に入れた！
+      `;
     }
 
     // 所持リスト描画
@@ -593,9 +677,12 @@
           const btnDisabled = isEquipped ? "disabled style='opacity:0.5; cursor:default;'" : "";
 
           item.innerHTML = `
-            <div>
-              <span class="rarity-${monster.rarity}">[${monster.rarity}]</span> <b>${monster.name}</b><br>
-              <small style="color:#666;">HP:${monster.hp} / 攻:${monster.atk} (${monster.ability})</small>
+            <div class="monster-item-left">
+              <img class="monster-thumb aura-${monster.rarity}" src="${monster.img}">
+              <div>
+                <span class="rarity-${monster.rarity}">[${monster.rarity}]</span> <b>${monster.name}</b><br>
+                <small style="color:#666;">HP:${monster.hp} / 攻:${monster.atk}</small>
+              </div>
             </div>
             <button class="btn btn-select" ${btnDisabled} onclick="setPartner('${monster.id}')">${btnText}</button>
           `;
