@@ -40,6 +40,25 @@
       width: 100%;
       transition: width 0.3s;
     }
+    .nav-tabs {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 15px;
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+      border: none;
+      background: #dfe4ea;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .nav-btn.active {
+      background: #1e90ff;
+      color: white;
+    }
     .btn {
       display: block;
       width: 100%;
@@ -52,12 +71,11 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    .btn:active {
-      background: #0066cc;
-    }
+    .btn:active { background: #0066cc; }
     .btn-easy { background: #2ed573; }
     .btn-medium { background: #ffa502; }
     .btn-hard { background: #ff4757; }
+    .btn-gacha { background: #9b59b6; font-size: 18px; font-weight: bold; }
     .btn-back { background: #747d8c; margin-top: 15px; }
     
     .reset-btn {
@@ -71,9 +89,34 @@
       margin-top: 15px;
       font-size: 18px;
     }
-    .hidden {
-      display: none;
+    .hidden { display: none; }
+
+    /* ガチャ・図鑑用スタイル */
+    .gacha-result {
+      background: #f1f2f6;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      font-size: 18px;
+      font-weight: bold;
     }
+    .monster-list {
+      text-align: left;
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .monster-item {
+      padding: 8px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+    }
+    .rarity-SR { color: #e67e22; font-weight: bold; }
+    .rarity-R { color: #2980b9; font-weight: bold; }
+    .rarity-N { color: #27ae60; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -84,6 +127,13 @@
     <!-- プレイヤーのステータス表示 -->
     <div class="status-bar">
       🎓 所持ポイント: <span id="user-points">0</span> pt
+    </div>
+
+    <!-- メニュータブ -->
+    <div class="nav-tabs">
+      <button class="nav-btn active" id="tab-stage" onclick="switchTab('stage')">⚔️ ステージ</button>
+      <button class="nav-btn" id="tab-gacha" onclick="switchTab('gacha')">🎁 ガチャ</button>
+      <button class="nav-btn" id="tab-list" onclick="switchTab('list')">📜 所持ガクモン</button>
     </div>
 
     <!-- 1. ステージ選択画面 -->
@@ -110,6 +160,20 @@
       <button class="btn btn-back" onclick="showStageSelect()">ステージ選択に戻る</button>
     </div>
 
+    <!-- 3. ガチャ画面 -->
+    <div id="gacha-screen" class="hidden">
+      <h3>ガクモンガチャ</h3>
+      <p>1回 <b>100 pt</b> で引き当てよう！</p>
+      <button class="btn btn-gacha" onclick="drawGacha()">🎰 ガチャを引く (100pt)</button>
+      <div id="gacha-result" class="gacha-result hidden"></div>
+    </div>
+
+    <!-- 4. 所持ガクモンリスト画面 -->
+    <div id="list-screen" class="hidden">
+      <h3>所持ガクモン一覧</h3>
+      <div id="monster-list" class="monster-list"></div>
+    </div>
+
     <p id="message"></p>
 
     <!-- テスト用データリセットボタン -->
@@ -119,14 +183,25 @@
   <script>
     // プレイヤーデータ
     let userPoints = 0;
-    
+    let ownedMonsters = []; // 所持ガクモンIDのリスト
+
+    // ガクモンマスターデータ
+    const monsterData = [
+      { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学" },
+      { id: "m2", name: "テクリン", rarity: "N", type: "計算" },
+      { id: "m3", name: "パピラス", rarity: "N", type: "国語" },
+      { id: "m4", name: "イグニスドラコ", rarity: "R", type: "理科" },
+      { id: "m5", name: "ボルトロボ", rarity: "R", type: "工学" },
+      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合" }
+    ];
+
     // バトル用変数
     let currentStage = "";
     let stageReward = 0;
     let enemyHP = 100;
     let currentQuiz = null;
 
-    // クイズ問題集（難易度別）
+    // クイズ問題集
     const quizData = {
       easy: [
         { q: "15 + 27 = ?", options: [42, 32, 52], a: 42 },
@@ -145,7 +220,7 @@
       ]
     };
 
-    // 初期化ロード
+    // ロード
     window.onload = function() {
       loadData();
     };
@@ -153,17 +228,48 @@
     function loadData() {
       const savedPoints = localStorage.getItem("gakumon_points");
       userPoints = savedPoints !== null ? parseInt(savedPoints, 10) : 0;
+
+      const savedMonsters = localStorage.getItem("gakumon_monsters");
+      ownedMonsters = savedMonsters !== null ? JSON.parse(savedMonsters) : [];
+
       updateUI();
     }
 
     function saveData() {
       localStorage.setItem("gakumon_points", userPoints);
+      localStorage.setItem("gakumon_monsters", JSON.stringify(ownedMonsters));
     }
 
     function updateUI() {
       document.getElementById("user-points").innerText = userPoints;
       document.getElementById("hp-text").innerText = enemyHP;
       document.getElementById("hp-fill").style.width = enemyHP + "%";
+      renderMonsterList();
+    }
+
+    // タブ切り替え
+    function switchTab(tabName) {
+      document.getElementById("stage-select-screen").classList.add("hidden");
+      document.getElementById("battle-screen").classList.add("hidden");
+      document.getElementById("gacha-screen").classList.add("hidden");
+      document.getElementById("list-screen").classList.add("hidden");
+
+      document.getElementById("tab-stage").classList.remove("active");
+      document.getElementById("tab-gacha").classList.remove("active");
+      document.getElementById("tab-list").classList.remove("active");
+
+      document.getElementById("message").innerText = "";
+
+      if (tabName === 'stage') {
+        document.getElementById("stage-select-screen").classList.remove("hidden");
+        document.getElementById("tab-stage").classList.add("active");
+      } else if (tabName === 'gacha') {
+        document.getElementById("gacha-screen").classList.remove("hidden");
+        document.getElementById("tab-gacha").classList.add("active");
+      } else if (tabName === 'list') {
+        document.getElementById("list-screen").classList.remove("hidden");
+        document.getElementById("tab-list").classList.add("active");
+      }
     }
 
     // ステージ開始
@@ -190,7 +296,7 @@
       updateUI();
     }
 
-    // 次の問題をセット
+    // 次の問題
     function nextQuestion() {
       const questions = quizData[currentStage];
       currentQuiz = questions[Math.floor(Math.random() * questions.length)];
@@ -200,7 +306,6 @@
       const optionsDiv = document.getElementById("options");
       optionsDiv.innerHTML = "";
 
-      // 選択肢ボタンを生成（シャッフル）
       const shuffledOptions = [...currentQuiz.options].sort(() => Math.random() - 0.5);
       shuffledOptions.forEach(opt => {
         const btn = document.createElement("button");
@@ -240,19 +345,79 @@
       updateUI();
     }
 
-    // ステージ選択に戻る
     function showStageSelect() {
-      document.getElementById("battle-screen").classList.add("hidden");
-      document.getElementById("stage-select-screen").classList.remove("hidden");
-      document.getElementById("message").innerText = "";
+      switchTab('stage');
+    }
+
+    // ガチャ実行
+    function drawGacha() {
+      const msg = document.getElementById("message");
+      const resultDiv = document.getElementById("gacha-result");
+
+      if (userPoints < 100) {
+        msg.style.color = "red";
+        msg.innerText = "❌ ポイントが足りません！(100pt必要です)";
+        resultDiv.classList.add("hidden");
+        return;
+      }
+
+      // ポイント消費
+      userPoints -= 100;
+
+      // 確率判定 (N:60%, R:30%, SR:10%)
+      const rand = Math.random() * 100;
+      let targetRarity = "N";
+      if (rand < 10) {
+        targetRarity = "SR";
+      } else if (rand < 40) {
+        targetRarity = "R";
+      }
+
+      // 対象レアリティからランダム選出
+      const pool = monsterData.filter(m => m.rarity === targetRarity);
+      const drawnMonster = pool[Math.floor(Math.random() * pool.length)];
+
+      // 所持リストに追加（重複チェック）
+      if (!ownedMonsters.includes(drawnMonster.id)) {
+        ownedMonsters.push(drawnMonster.id);
+      }
+
+      saveData();
       updateUI();
+
+      msg.innerText = "";
+      resultDiv.classList.remove("hidden");
+      resultDiv.innerHTML = `🎉 ガチャ結果 🎉<br><span class="rarity-${drawnMonster.rarity}">[${drawnMonster.rarity}] ${drawnMonster.name}</span> を手に入れた！`;
+    }
+
+    // 所持リスト描画
+    function renderMonsterList() {
+      const listDiv = document.getElementById("monster-list");
+      listDiv.innerHTML = "";
+
+      if (ownedMonsters.length === 0) {
+        listDiv.innerHTML = "<p style='text-align:center; color:#888;'>まだガクモンを持っていません。<br>ガチャを引いて集めよう！</p>";
+        return;
+      }
+
+      ownedMonsters.forEach(id => {
+        const monster = monsterData.find(m => m.id === id);
+        if (monster) {
+          const item = document.createElement("div");
+          item.className = "monster-item";
+          item.innerHTML = `<span><b>${monster.name}</b> (${monster.type})</span><span class="rarity-${monster.rarity}">${monster.rarity}</span>`;
+          listDiv.appendChild(item);
+        }
+      });
     }
 
     // データリセット
     function resetData() {
       if (confirm("セーブデータを初期化しますか？")) {
         localStorage.removeItem("gakumon_points");
+        localStorage.removeItem("gakumon_monsters");
         userPoints = 0;
+        ownedMonsters = [];
         showStageSelect();
         updateUI();
         document.getElementById("message").innerText = "データをリセットしました。";
