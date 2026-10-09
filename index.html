@@ -27,15 +27,30 @@
       font-weight: bold;
       color: #333;
     }
+    .partner-box {
+      background: #eccc68;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #2f3542;
+    }
     .hp-bar {
       background: #e0e0e0;
       border-radius: 8px;
-      height: 20px;
-      margin: 10px 0;
+      height: 18px;
+      margin: 6px 0;
       overflow: hidden;
     }
-    .hp-fill {
+    .hp-fill-enemy {
       background: #ff4757;
+      height: 100%;
+      width: 100%;
+      transition: width 0.3s;
+    }
+    .hp-fill-player {
+      background: #2ed573;
       height: 100%;
       width: 100%;
       transition: width 0.3s;
@@ -77,6 +92,7 @@
     .btn-hard { background: #ff4757; }
     .btn-gacha { background: #9b59b6; font-size: 18px; font-weight: bold; }
     .btn-back { background: #747d8c; margin-top: 15px; }
+    .btn-select { background: #ffa502; padding: 4px 8px; font-size: 12px; width: auto; display: inline-block; margin: 0; }
     
     .reset-btn {
       background: #95a5a6;
@@ -105,7 +121,7 @@
       background: #f8f9fa;
       padding: 10px;
       border-radius: 8px;
-      max-height: 200px;
+      max-height: 220px;
       overflow-y: auto;
     }
     .monster-item {
@@ -113,6 +129,7 @@
       border-bottom: 1px solid #e0e0e0;
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
     .rarity-SR { color: #e67e22; font-weight: bold; }
     .rarity-R { color: #2980b9; font-weight: bold; }
@@ -127,6 +144,11 @@
     <!-- プレイヤーのステータス表示 -->
     <div class="status-bar">
       🎓 所持ポイント: <span id="user-points">0</span> pt
+    </div>
+
+    <!-- パートナー表示 -->
+    <div class="partner-box">
+      🐾 パートナー: <span id="partner-name">なし</span>
     </div>
 
     <!-- メニュータブ -->
@@ -147,9 +169,17 @@
     <!-- 2. バトル・クイズ画面 -->
     <div id="battle-screen" class="hidden">
       <h3 id="stage-title">ステージ</h3>
-      <h4>敵モンスター (HP: <span id="hp-text">100</span>)</h4>
+      
+      <!-- 敵HP -->
+      <div style="font-size:14px; text-align:left;">👾 敵モンスター (HP: <span id="enemy-hp-text">100</span>)</div>
       <div class="hp-bar">
-        <div id="hp-fill" class="hp-fill"></div>
+        <div id="enemy-hp-fill" class="hp-fill-enemy"></div>
+      </div>
+
+      <!-- プレイヤーHP -->
+      <div style="font-size:14px; text-align:left; margin-top:8px;">🛡️ 自分のHP (HP: <span id="player-hp-text">100</span>)</div>
+      <div class="hp-bar">
+        <div id="player-hp-fill" class="hp-fill-player"></div>
       </div>
 
       <hr>
@@ -184,21 +214,26 @@
     // プレイヤーデータ
     let userPoints = 0;
     let ownedMonsters = []; // 所持ガクモンIDのリスト
+    let partnerId = null;   // セット中のガクモンID
 
-    // ガクモンマスターデータ
+    // ガクモンマスターデータ（ステータス・能力追加）
     const monsterData = [
-      { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学" },
-      { id: "m2", name: "テクリン", rarity: "N", type: "計算" },
-      { id: "m3", name: "パピラス", rarity: "N", type: "国語" },
-      { id: "m4", name: "イグニスドラコ", rarity: "R", type: "理科" },
-      { id: "m5", name: "ボルトロボ", rarity: "R", type: "工学" },
-      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合" }
+      { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学", hp: 100, atk: 50, ability: "なし" },
+      { id: "m2", name: "テクリン", rarity: "N", type: "計算", hp: 100, atk: 50, ability: "なし" },
+      { id: "m3", name: "パピラス", rarity: "N", type: "国語", hp: 100, atk: 50, ability: "なし" },
+      { id: "m4", name: "イグニスドラコ", rarity: "R", type: "理科", hp: 150, atk: 60, ability: "HP・攻撃アップ" },
+      { id: "m5", name: "ボルトロボ", rarity: "R", type: "工学", hp: 150, atk: 60, ability: "HP・攻撃アップ" },
+      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合", hp: 200, atk: 70, ability: "会心（一定確率で2倍ダメ）" }
     ];
 
     // バトル用変数
     let currentStage = "";
     let stageReward = 0;
     let enemyHP = 100;
+    let enemyMaxHP = 100;
+    let playerHP = 100;
+    let playerMaxHP = 100;
+    let playerATK = 50;
     let currentQuiz = null;
 
     // クイズ問題集
@@ -232,18 +267,40 @@
       const savedMonsters = localStorage.getItem("gakumon_monsters");
       ownedMonsters = savedMonsters !== null ? JSON.parse(savedMonsters) : [];
 
+      partnerId = localStorage.getItem("gakumon_partner");
+
+      // 初期状態で何か持っていれば自動セット
+      if (!partnerId && ownedMonsters.length > 0) {
+        partnerId = ownedMonsters[0];
+      }
+
       updateUI();
     }
 
     function saveData() {
       localStorage.setItem("gakumon_points", userPoints);
       localStorage.setItem("gakumon_monsters", JSON.stringify(ownedMonsters));
+      if (partnerId) localStorage.setItem("gakumon_partner", partnerId);
     }
 
     function updateUI() {
       document.getElementById("user-points").innerText = userPoints;
-      document.getElementById("hp-text").innerText = enemyHP;
-      document.getElementById("hp-fill").style.width = enemyHP + "%";
+
+      // パートナー表示更新
+      const partner = monsterData.find(m => m.id === partnerId);
+      if (partner) {
+        document.getElementById("partner-name").innerHTML = `<span class="rarity-${partner.rarity}">[${partner.rarity}] ${partner.name}</span> (HP:${partner.hp} / 攻:${partner.atk})`;
+      } else {
+        document.getElementById("partner-name").innerText = "未セット";
+      }
+
+      // バトル画面ステータス
+      document.getElementById("enemy-hp-text").innerText = enemyHP;
+      document.getElementById("enemy-hp-fill").style.width = Math.max(0, (enemyHP / enemyMaxHP) * 100) + "%";
+
+      document.getElementById("player-hp-text").innerText = playerHP;
+      document.getElementById("player-hp-fill").style.width = Math.max(0, (playerHP / playerMaxHP) * 100) + "%";
+
       renderMonsterList();
     }
 
@@ -272,11 +329,33 @@
       }
     }
 
+    // パートナー変更
+    function setPartner(id) {
+      partnerId = id;
+      saveData();
+      updateUI();
+      document.getElementById("message").style.color = "blue";
+      document.getElementById("message").innerText = "パートナーを変更しました！";
+    }
+
     // ステージ開始
     function startStage(difficulty) {
       currentStage = difficulty;
       enemyHP = 100;
+      enemyMaxHP = 100;
       document.getElementById("message").innerText = "";
+
+      // パートナーのステータス適用
+      const partner = monsterData.find(m => m.id === partnerId);
+      if (partner) {
+        playerHP = partner.hp;
+        playerMaxHP = partner.hp;
+        playerATK = partner.atk;
+      } else {
+        playerHP = 100;
+        playerMaxHP = 100;
+        playerATK = 50;
+      }
 
       if (difficulty === 'easy') {
         stageReward = 10;
@@ -286,6 +365,8 @@
         document.getElementById("stage-title").innerText = "🔥 中級ステージ";
       } else if (difficulty === 'hard') {
         stageReward = 50;
+        enemyHP = 150;
+        enemyMaxHP = 150;
         document.getElementById("stage-title").innerText = "👑 上級ステージ";
       }
 
@@ -319,13 +400,25 @@
     // 回答チェック
     function checkAnswer(selected) {
       const message = document.getElementById("message");
+      const partner = monsterData.find(m => m.id === partnerId);
 
       if (selected === currentQuiz.a) {
-        enemyHP -= 50;
+        let damage = playerATK;
+        let isCritical = false;
+
+        // SR固有の特殊能力：30%の確率でクリティカル（2倍ダメージ）
+        if (partner && partner.rarity === "SR" && Math.random() < 0.3) {
+          damage *= 2;
+          isCritical = true;
+        }
+
+        enemyHP -= damage;
         if (enemyHP < 0) enemyHP = 0;
         
         message.style.color = "green";
-        message.innerText = "✨ 正解！ モンスターに50ダメージ！";
+        message.innerText = isCritical 
+          ? `💥 会心の一撃！ モンスターに${damage}ダメージ！` 
+          : `✨ 正解！ モンスターに${damage}ダメージ！`;
 
         if (enemyHP === 0) {
           userPoints += stageReward;
@@ -338,8 +431,21 @@
           nextQuestion();
         }
       } else {
+        // 不正解：プレイヤーがダメージを受ける
+        playerHP -= 30;
+        if (playerHP < 0) playerHP = 0;
+
         message.style.color = "red";
-        message.innerText = "❌ 不正解... もう一度挑戦しよう！";
+        message.innerText = "❌ 不正解！ 30のダメージを受けた！";
+
+        if (playerHP === 0) {
+          message.innerText = "💀 HPが0になった... ステージ失敗！";
+          setTimeout(() => {
+            showStageSelect();
+          }, 2000);
+        } else {
+          nextQuestion();
+        }
       }
 
       updateUI();
@@ -361,10 +467,8 @@
         return;
       }
 
-      // ポイント消費
       userPoints -= 100;
 
-      // 確率判定 (N:60%, R:30%, SR:10%)
       const rand = Math.random() * 100;
       let targetRarity = "N";
       if (rand < 10) {
@@ -373,14 +477,15 @@
         targetRarity = "R";
       }
 
-      // 対象レアリティからランダム選出
       const pool = monsterData.filter(m => m.rarity === targetRarity);
       const drawnMonster = pool[Math.floor(Math.random() * pool.length)];
 
-      // 所持リストに追加（重複チェック）
       if (!ownedMonsters.includes(drawnMonster.id)) {
         ownedMonsters.push(drawnMonster.id);
       }
+
+      // パートナー未セットなら自動セット
+      if (!partnerId) partnerId = drawnMonster.id;
 
       saveData();
       updateUI();
@@ -405,7 +510,18 @@
         if (monster) {
           const item = document.createElement("div");
           item.className = "monster-item";
-          item.innerHTML = `<span><b>${monster.name}</b> (${monster.type})</span><span class="rarity-${monster.rarity}">${monster.rarity}</span>`;
+
+          const isEquipped = (partnerId === monster.id);
+          const btnText = isEquipped ? "セット中" : "パートナーにする";
+          const btnDisabled = isEquipped ? "disabled style='opacity:0.5; cursor:default;'" : "";
+
+          item.innerHTML = `
+            <div>
+              <span class="rarity-${monster.rarity}">[${monster.rarity}]</span> <b>${monster.name}</b><br>
+              <small style="color:#666;">HP:${monster.hp} / 攻:${monster.atk} (${monster.ability})</small>
+            </div>
+            <button class="btn btn-select" ${btnDisabled} onclick="setPartner('${monster.id}')">${btnText}</button>
+          `;
           listDiv.appendChild(item);
         }
       });
@@ -416,8 +532,10 @@
       if (confirm("セーブデータを初期化しますか？")) {
         localStorage.removeItem("gakumon_points");
         localStorage.removeItem("gakumon_monsters");
+        localStorage.removeItem("gakumon_partner");
         userPoints = 0;
         ownedMonsters = [];
+        partnerId = null;
         showStageSelect();
         updateUI();
         document.getElementById("message").innerText = "データをリセットしました。";
