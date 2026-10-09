@@ -26,6 +26,9 @@
       margin-bottom: 15px;
       font-weight: bold;
       color: #333;
+      display: flex;
+      justify-content: space-around;
+      font-size: 14px;
     }
     .partner-box {
       background: #eccc68;
@@ -104,7 +107,9 @@
     .btn-dungeon { background: #8e44ad; font-weight: bold; }
     .btn-gacha { background: #9b59b6; font-size: 18px; font-weight: bold; }
     .btn-back { background: #747d8c; margin-top: 15px; }
-    .btn-select { background: #ffa502; padding: 6px 10px; font-size: 12px; width: auto; display: inline-block; margin: 0; }
+    .btn-select { background: #ffa502; padding: 4px 8px; font-size: 11px; width: auto; margin: 2px 0; }
+    .btn-lvup { background: #2ed573; padding: 4px 8px; font-size: 11px; width: auto; margin: 2px 0; }
+    .btn-evolve { background: #e056fd; padding: 4px 8px; font-size: 11px; width: auto; margin: 2px 0; font-weight: bold; color: white; }
     
     .reset-btn {
       background: #95a5a6;
@@ -115,7 +120,7 @@
     #message {
       font-weight: bold;
       margin-top: 15px;
-      font-size: 16px;
+      font-size: 15px;
     }
     .hidden { display: none; }
 
@@ -171,11 +176,11 @@
       background: #f8f9fa;
       padding: 10px;
       border-radius: 8px;
-      max-height: 240px;
+      max-height: 260px;
       overflow-y: auto;
     }
     .monster-item {
-      padding: 8px;
+      padding: 10px 6px;
       border-bottom: 1px solid #e0e0e0;
       display: flex;
       justify-content: space-between;
@@ -184,11 +189,16 @@
     .monster-item-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+    }
+    .monster-item-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
     }
     .monster-thumb {
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       border-radius: 6px;
       object-fit: cover;
     }
@@ -200,7 +210,7 @@
       padding: 12px;
       border-radius: 8px;
       margin-bottom: 15px;
-      font-size: 14px;
+      font-size: 13px;
       color: #4a148c;
     }
   </style>
@@ -212,7 +222,8 @@
     
     <!-- プレイヤーのステータス表示 -->
     <div class="status-bar">
-      🎓 所持ポイント: <span id="user-points">0</span> pt
+      <div>🎓 所持: <span id="user-points">0</span> pt</div>
+      <div>🧊 E-キューブ: <span id="user-cubes">0</span> 個</div>
     </div>
 
     <!-- パートナー表示 -->
@@ -243,9 +254,10 @@
     <div id="dungeon-select-screen" class="hidden">
       <h3>🏰 難関大学ダンジョン</h3>
       <div class="dungeon-info">
-        全問正解してダンジョンを完全攻略しよう！<br>途中で倒れると報酬は手に入りません。
+        全問正解してダンジョンを完全攻略しよう！<br>
+        クリアで <b>300pt ＋ 進化素材「E-キューブ」</b> を獲得！
       </div>
-      <button class="btn btn-dungeon" onclick="startDungeon('tokyo')">🎓 東京大学ダンジョン (全5問) [+300pt]</button>
+      <button class="btn btn-dungeon" onclick="startDungeon('tokyo')">🎓 東京大学ダンジョン (全5問) [+300pt / 🧊1個]</button>
     </div>
 
     <!-- 3. バトル・クイズ画面 -->
@@ -305,19 +317,31 @@
   <script>
     // プレイヤーデータ
     let userPoints = 0;
-    let ownedMonsters = [];
+    let userCubes = 0;
+    let ownedMonsters = {}; // 所持データの個別保持 { "m7": { level: 1, stage: 1 } }
     let partnerId = null;
 
-    // ガクモンマスターデータ（新キャラ「エンピツン」を追加！）
-    const monsterData = [
-      { id: "m1", name: "ヒコッコ", rarity: "N", type: "数学", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png" },
-      { id: "m2", name: "テクリン", rarity: "N", type: "計算", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png" },
-      { id: "m3", name: "パピラス", rarity: "N", type: "国語", hp: 100, atk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/4.png" },
-      { id: "m4", name: "イグニスドラコ", rarity: "R", type: "理科", hp: 150, atk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png" },
-      { id: "m5", name: "ボルトロボ", rarity: "R", type: "工学", hp: 150, atk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png" },
-      { id: "m6", name: "ソルフェニックス", rarity: "SR", type: "総合", hp: 200, atk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png" },
-      { id: "m7", name: "エンピツン", rarity: "N", type: "計算", hp: 110, atk: 55, ability: "なし", img: "./IMG_1393.jpeg" }
-    ];
+    // レアリティ別コスト設定 (レベルアップ消費pt/Lv)
+    const rarityCost = { "N": 10, "R": 20, "SR": 30 };
+    // 進化段階ごとのレベル上限
+    const maxLevelCap = { 1: 30, 2: 50, 3: 100 };
+
+    // ガクモンマスターデータ（進化データ追加）
+    const monsterData = {
+      "m1": { id: "m1", name: "ヒコッコ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png" },
+      "m2": { id: "m2", name: "テクリン", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png" },
+      "m3": { id: "m3", name: "パピラス", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/4.png" },
+      "m4": { id: "m4", name: "イグニスドラコ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png" },
+      "m5": { id: "m5", name: "ボルトロボ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png" },
+      "m6": { id: "m6", name: "ソルフェニックス", rarity: "SR", stage: 1, baseHp: 200, baseAtk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png" },
+      // エンピツン（第1形態）
+      "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_1393.jpeg", evolveTo: "m7_2", evolveReqCube: 1 },
+      // シャープン（エンピツンの第2形態 / R進化）
+      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_1394.jpeg" }
+    };
+
+    // ガチャ用ベースプールID
+    const gachaPool = ["m1", "m2", "m3", "m4", "m5", "m6", "m7"];
 
     // バトル・ダンジョン用変数
     let currentStage = "";
@@ -367,13 +391,26 @@
       const savedPoints = localStorage.getItem("gakumon_points");
       userPoints = savedPoints !== null ? parseInt(savedPoints, 10) : 0;
 
-      const savedMonsters = localStorage.getItem("gakumon_monsters");
-      ownedMonsters = savedMonsters !== null ? JSON.parse(savedMonsters) : [];
+      const savedCubes = localStorage.getItem("gakumon_cubes");
+      userCubes = savedCubes !== null ? parseInt(savedCubes, 10) : 0;
+
+      const savedMonsters = localStorage.getItem("gakumon_owned_dict");
+      if (savedMonsters) {
+        ownedMonsters = JSON.parse(savedMonsters);
+      } else {
+        // 互換処理（旧配列データ）
+        const oldMonsters = localStorage.getItem("gakumon_monsters");
+        ownedMonsters = {};
+        if (oldMonsters) {
+          const list = JSON.parse(oldMonsters);
+          list.forEach(id => { ownedMonsters[id] = { level: 1 }; });
+        }
+      }
 
       partnerId = localStorage.getItem("gakumon_partner");
-
-      if (!partnerId && ownedMonsters.length > 0) {
-        partnerId = ownedMonsters[0];
+      const keys = Object.keys(ownedMonsters);
+      if (!partnerId && keys.length > 0) {
+        partnerId = keys[0];
       }
 
       updateUI();
@@ -381,19 +418,31 @@
 
     function saveData() {
       localStorage.setItem("gakumon_points", userPoints);
-      localStorage.setItem("gakumon_monsters", JSON.stringify(ownedMonsters));
+      localStorage.setItem("gakumon_cubes", userCubes);
+      localStorage.setItem("gakumon_owned_dict", JSON.stringify(ownedMonsters));
       if (partnerId) localStorage.setItem("gakumon_partner", partnerId);
+    }
+
+    // ガクモンの現在の計算後ステータスを取得
+    function getMonsterStats(id) {
+      const m = monsterData[id];
+      if (!m) return null;
+      const lv = (ownedMonsters[id] && ownedMonsters[id].level) ? ownedMonsters[id].level : 1;
+      const hp = m.baseHp + (lv - 1) * 10;
+      const atk = m.baseAtk + (lv - 1) * 3;
+      return { ...m, level: lv, hp: hp, atk: atk };
     }
 
     function updateUI() {
       document.getElementById("user-points").innerText = userPoints;
+      document.getElementById("user-cubes").innerText = userCubes;
 
       // パートナー表示更新
-      const partner = monsterData.find(m => m.id === partnerId);
+      const partner = getMonsterStats(partnerId);
       const partnerImg = document.getElementById("partner-img");
 
       if (partner) {
-        document.getElementById("partner-name").innerHTML = `<span class="rarity-${partner.rarity}">[${partner.rarity}] ${partner.name}</span> (HP:${partner.hp} / 攻:${partner.atk})`;
+        document.getElementById("partner-name").innerHTML = `<span class="rarity-${partner.rarity}">[${partner.rarity}] ${partner.name}</span> Lv.${partner.level} (HP:${partner.hp} / 攻:${partner.atk})`;
         partnerImg.src = partner.img;
         partnerImg.className = `monster-thumb aura-${partner.rarity}`;
       } else {
@@ -449,6 +498,72 @@
       document.getElementById("message").innerText = "パートナーを変更しました！";
     }
 
+    // レベルアップ実行
+    function levelUpMonster(id) {
+      const stats = getMonsterStats(id);
+      if (!stats) return;
+
+      const cap = maxLevelCap[stats.stage] || 30;
+      if (stats.level >= cap) {
+        document.getElementById("message").style.color = "red";
+        document.getElementById("message").innerText = `❌ レベル上限(Lv.${cap})に達しています！進化させると上限が解放されます。`;
+        return;
+      }
+
+      const cost = rarityCost[stats.rarity] || 10;
+      if (userPoints < cost) {
+        document.getElementById("message").style.color = "red";
+        document.getElementById("message").innerText = `❌ ポイントが足りません！(必要: ${cost}pt)`;
+        return;
+      }
+
+      userPoints -= cost;
+      ownedMonsters[id].level += 1;
+      saveData();
+      updateUI();
+
+      document.getElementById("message").style.color = "green";
+      document.getElementById("message").innerText = `✨ ${stats.name} のレベルが ${ownedMonsters[id].level} に上がった！`;
+    }
+
+    // 進化実行
+    function evolveMonster(id) {
+      const stats = getMonsterStats(id);
+      if (!stats || !stats.evolveTo) return;
+
+      const cap = maxLevelCap[stats.stage] || 30;
+      if (stats.level < cap) {
+        document.getElementById("message").style.color = "red";
+        document.getElementById("message").innerText = `❌ レベルが上限(Lv.${cap})に達していないため進化できません！`;
+        return;
+      }
+
+      const reqCube = stats.evolveReqCube || 1;
+      if (userCubes < reqCube) {
+        document.getElementById("message").style.color = "red";
+        document.getElementById("message").innerText = `❌ E-キューブが足りません！(必要: ${reqCube}個)`;
+        return;
+      }
+
+      const nextId = stats.evolveTo;
+      const nextMaster = monsterData[nextId];
+
+      userCubes -= reqCube;
+      // 元モンスター削除、新進化先を同じレベルで追加
+      delete ownedMonsters[id];
+      ownedMonsters[nextId] = { level: stats.level };
+
+      if (partnerId === id) {
+        partnerId = nextId;
+      }
+
+      saveData();
+      updateUI();
+
+      document.getElementById("message").style.color = "purple";
+      document.getElementById("message").innerText = `🎉 成功！ ${stats.name} は ${nextMaster.name} [${nextMaster.rarity}] に進化を遂げた！！`;
+    }
+
     // 通常ステージ開始
     function startStage(difficulty) {
       isDungeonMode = false;
@@ -502,7 +617,7 @@
     }
 
     function initBattleStatus() {
-      const partner = monsterData.find(m => m.id === partnerId);
+      const partner = getMonsterStats(partnerId);
       const playerImg = document.getElementById("player-battle-img");
 
       if (partner) {
@@ -549,7 +664,7 @@
     // 回答チェック
     function checkAnswer(selected) {
       const message = document.getElementById("message");
-      const partner = monsterData.find(m => m.id === partnerId);
+      const partner = getMonsterStats(partnerId);
 
       if (selected === currentQuiz.a) {
         let damage = playerATK;
@@ -572,8 +687,9 @@
           if (isDungeonMode) {
             if (dungeonStep >= dungeonTotalSteps) {
               userPoints += stageReward;
+              userCubes += 1; // ダンジョンクリアでE-キューブ獲得！
               saveData();
-              message.innerText = `🎉 ダンジョン完全クリア！ 特別報酬: ${stageReward}pt ゲット！`;
+              message.innerText = `🎉 ダンジョン完全クリア！ 特別報酬: ${stageReward}pt ＆ 🧊E-キューブ 1個ゲット！`;
               setTimeout(() => { showStageSelect(); }, 2500);
             } else {
               dungeonStep++;
@@ -636,11 +752,11 @@
         targetRarity = "R";
       }
 
-      const pool = monsterData.filter(m => m.rarity === targetRarity);
+      const pool = gachaPool.map(id => monsterData[id]).filter(m => m.rarity === targetRarity);
       const drawnMonster = pool[Math.floor(Math.random() * pool.length)];
 
-      if (!ownedMonsters.includes(drawnMonster.id)) {
-        ownedMonsters.push(drawnMonster.id);
+      if (!ownedMonsters[drawnMonster.id]) {
+        ownedMonsters[drawnMonster.id] = { level: 1 };
       }
 
       if (!partnerId) partnerId = drawnMonster.id;
@@ -648,44 +764,64 @@
       saveData();
       updateUI();
 
+      const stats = getMonsterStats(drawnMonster.id);
+
       msg.innerText = "";
       resultDiv.classList.remove("hidden");
       resultDiv.innerHTML = `
         🎉 ガチャ結果 🎉<br>
-        <img class="gacha-img aura-${drawnMonster.rarity}" src="${drawnMonster.img}"><br>
-        <span class="rarity-${drawnMonster.rarity}">[${drawnMonster.rarity}] ${drawnMonster.name}</span> を手に入れた！
+        <img class="gacha-img aura-${stats.rarity}" src="${stats.img}"><br>
+        <span class="rarity-${stats.rarity}">[${stats.rarity}] ${stats.name}</span> を手に入れた！
       `;
     }
 
-    // 所持リスト描画
+    // 所持リスト描画（レベルアップ・進化ボタン配置）
     function renderMonsterList() {
       const listDiv = document.getElementById("monster-list");
       listDiv.innerHTML = "";
 
-      if (ownedMonsters.length === 0) {
+      const keys = Object.keys(ownedMonsters);
+      if (keys.length === 0) {
         listDiv.innerHTML = "<p style='text-align:center; color:#888;'>まだガクモンを持っていません。<br>ガチャを引いて集めよう！</p>";
         return;
       }
 
-      ownedMonsters.forEach(id => {
-        const monster = monsterData.find(m => m.id === id);
-        if (monster) {
+      keys.forEach(id => {
+        const stats = getMonsterStats(id);
+        if (stats) {
           const item = document.createElement("div");
           item.className = "monster-item";
 
-          const isEquipped = (partnerId === monster.id);
-          const btnText = isEquipped ? "セット中" : "パートナーにする";
+          const isEquipped = (partnerId === id);
+          const btnText = isEquipped ? "セット中" : "パートナー";
           const btnDisabled = isEquipped ? "disabled style='opacity:0.5; cursor:default;'" : "";
+          
+          const cost = rarityCost[stats.rarity] || 10;
+          const cap = maxLevelCap[stats.stage] || 30;
+
+          // 進化可能か判定（進化先があり、レベルがカンストしている）
+          let evolveBtnHtml = "";
+          if (stats.evolveTo) {
+            const reqCube = stats.evolveReqCube || 1;
+            const canEvolve = (stats.level >= cap);
+            const style = canEvolve ? "" : "style='opacity:0.5;'";
+            evolveBtnHtml = `<button class="btn btn-evolve" ${style} onclick="evolveMonster('${id}')">🧬 進化 (🧊${reqCube})</button>`;
+          }
 
           item.innerHTML = `
             <div class="monster-item-left">
-              <img class="monster-thumb aura-${monster.rarity}" src="${monster.img}">
+              <img class="monster-thumb aura-${stats.rarity}" src="${stats.img}">
               <div>
-                <span class="rarity-${monster.rarity}">[${monster.rarity}]</span> <b>${monster.name}</b><br>
-                <small style="color:#666;">HP:${monster.hp} / 攻:${monster.atk}</small>
+                <span class="rarity-${stats.rarity}">[${stats.rarity}]</span> <b>${stats.name}</b><br>
+                <small style="color:#333;"><b>Lv.${stats.level}</b> (上限:${cap})</small><br>
+                <small style="color:#666;">HP:${stats.hp} / 攻:${stats.atk}</small>
               </div>
             </div>
-            <button class="btn btn-select" ${btnDisabled} onclick="setPartner('${monster.id}')">${btnText}</button>
+            <div class="monster-item-actions">
+              <button class="btn btn-select" ${btnDisabled} onclick="setPartner('${id}')">${btnText}</button>
+              <button class="btn btn-lvup" onclick="levelUpMonster('${id}')">🆙 LvUP (${cost}pt)</button>
+              ${evolveBtnHtml}
+            </div>
           `;
           listDiv.appendChild(item);
         }
@@ -696,10 +832,13 @@
     function resetData() {
       if (confirm("セーブデータを初期化しますか？")) {
         localStorage.removeItem("gakumon_points");
+        localStorage.removeItem("gakumon_cubes");
         localStorage.removeItem("gakumon_monsters");
+        localStorage.removeItem("gakumon_owned_dict");
         localStorage.removeItem("gakumon_partner");
         userPoints = 0;
-        ownedMonsters = [];
+        userCubes = 0;
+        ownedMonsters = {};
         partnerId = null;
         showStageSelect();
         updateUI();
