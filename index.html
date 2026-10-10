@@ -318,7 +318,7 @@
     // プレイヤーデータ
     let userPoints = 0;
     let userCubes = 0;
-    let ownedMonsters = {}; // 所持データの個別保持 { "m7": { level: 1, stage: 1 } }
+    let ownedMonsters = {};
     let partnerId = null;
 
     // レアリティ別コスト設定 (レベルアップ消費pt/Lv)
@@ -326,7 +326,7 @@
     // 進化段階ごとのレベル上限
     const maxLevelCap = { 1: 30, 2: 50, 3: 100 };
 
-    // ガクモンマスターデータ（進化データ追加）
+    // ガクモンマスターデータ（エンピツン全3形態＆イヌ系全3形態を追加）
     const monsterData = {
       "m1": { id: "m1", name: "ヒコッコ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png" },
       "m2": { id: "m2", name: "テクリン", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png" },
@@ -334,14 +334,20 @@
       "m4": { id: "m4", name: "イグニスドラコ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png" },
       "m5": { id: "m5", name: "ボルトロボ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png" },
       "m6": { id: "m6", name: "ソルフェニックス", rarity: "SR", stage: 1, baseHp: 200, baseAtk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png" },
-      // エンピツン（第1形態）
+
+      // --- エンピツン進化ライン ---
       "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_1393.jpeg", evolveTo: "m7_2", evolveReqCube: 1 },
-      // シャープン（エンピツンの第2形態 / R進化）
-      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_1394.jpeg" }
+      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_1394.jpeg", evolveTo: "m7_3", evolveReqCube: 2 },
+      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1395.png" },
+
+      // --- パピワン進化ライン ---
+      "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_1411.png", evolveTo: "m8_2", evolveReqCube: 1 },
+      "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_1412.png", evolveTo: "m8_3", evolveReqCube: 2 },
+      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1413.png" }
     };
 
-    // ガチャ用ベースプールID
-    const gachaPool = ["m1", "m2", "m3", "m4", "m5", "m6", "m7"];
+    // ガチャ用ベースプールID（進化前ガクモンのみ出現）
+    const gachaPool = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
 
     // バトル・ダンジョン用変数
     let currentStage = "";
@@ -398,7 +404,6 @@
       if (savedMonsters) {
         ownedMonsters = JSON.parse(savedMonsters);
       } else {
-        // 互換処理（旧配列データ）
         const oldMonsters = localStorage.getItem("gakumon_monsters");
         ownedMonsters = {};
         if (oldMonsters) {
@@ -549,7 +554,6 @@
       const nextMaster = monsterData[nextId];
 
       userCubes -= reqCube;
-      // 元モンスター削除、新進化先を同じレベルで追加
       delete ownedMonsters[id];
       ownedMonsters[nextId] = { level: stats.level };
 
@@ -687,7 +691,7 @@
           if (isDungeonMode) {
             if (dungeonStep >= dungeonTotalSteps) {
               userPoints += stageReward;
-              userCubes += 1; // ダンジョンクリアでE-キューブ獲得！
+              userCubes += 1;
               saveData();
               message.innerText = `🎉 ダンジョン完全クリア！ 特別報酬: ${stageReward}pt ＆ 🧊E-キューブ 1個ゲット！`;
               setTimeout(() => { showStageSelect(); }, 2500);
@@ -799,7 +803,7 @@
           const cost = rarityCost[stats.rarity] || 10;
           const cap = maxLevelCap[stats.stage] || 30;
 
-          // 進化可能か判定（進化先があり、レベルがカンストしている）
+          // 進化可能か判定
           let evolveBtnHtml = "";
           if (stats.evolveTo) {
             const reqCube = stats.evolveReqCube || 1;
