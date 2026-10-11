@@ -361,6 +361,7 @@
     let playerMaxHP = 100;
     let playerATK = 50;
     let currentQuiz = null;
+    let battleActive = false; // 戦闘中のみ回答を受け付ける（クリア後の連打対策）
 
     // クイズ問題集
     const quizData = {
@@ -436,6 +437,16 @@
       const hp = m.baseHp + (lv - 1) * 10;
       const atk = m.baseAtk + (lv - 1) * 3;
       return { ...m, level: lv, hp: hp, atk: atk };
+    }
+
+    // 進化ライン（進化前〜進化後）のどれかを持っているか
+    function ownsLine(id) {
+      let cur = id;
+      while (cur) {
+        if (ownedMonsters[cur]) return true;
+        cur = monsterData[cur].evolveTo;
+      }
+      return false;
     }
 
     function updateUI() {
@@ -555,7 +566,9 @@
 
       userCubes -= reqCube;
       delete ownedMonsters[id];
-      ownedMonsters[nextId] = { level: stats.level };
+      // すでに進化後を持っている場合（旧バグで被ったデータ）は、高いほうのレベルを残す
+      const existing = ownedMonsters[nextId];
+      ownedMonsters[nextId] = { level: Math.max(stats.level, existing ? existing.level : 0) };
 
       if (partnerId === id) {
         partnerId = nextId;
@@ -621,6 +634,8 @@
     }
 
     function initBattleStatus() {
+      battleActive = true; // 戦闘開始：回答を受け付ける
+
       const partner = getMonsterStats(partnerId);
       const playerImg = document.getElementById("player-battle-img");
 
@@ -667,6 +682,8 @@
 
     // 回答チェック
     function checkAnswer(selected) {
+      if (!battleActive) return; // 終了後の連打を無視
+
       const message = document.getElementById("message");
       const partner = getMonsterStats(partnerId);
 
@@ -690,6 +707,7 @@
         if (enemyHP === 0) {
           if (isDungeonMode) {
             if (dungeonStep >= dungeonTotalSteps) {
+              battleActive = false; // クリア確定：以降の入力を無効化
               userPoints += stageReward;
               userCubes += 1;
               saveData();
@@ -704,6 +722,7 @@
               nextQuestion();
             }
           } else {
+            battleActive = false; // クリア確定：以降の入力を無効化
             userPoints += stageReward;
             saveData();
             message.innerText = `🎉 モンスターを倒した！クリア報酬: ${stageReward}pt ゲット！`;
@@ -720,6 +739,7 @@
         message.innerText = "❌ 不正解！ 30のダメージを受けた！";
 
         if (playerHP === 0) {
+          battleActive = false; // 敗北確定：以降の入力を無効化
           message.innerText = "💀 HPが0になった... 攻略失敗！";
           setTimeout(() => { showStageSelect(); }, 2000);
         } else {
@@ -731,6 +751,7 @@
     }
 
     function showStageSelect() {
+      battleActive = false;
       switchTab('stage');
     }
 
@@ -759,7 +780,9 @@
       const pool = gachaPool.map(id => monsterData[id]).filter(m => m.rarity === targetRarity);
       const drawnMonster = pool[Math.floor(Math.random() * pool.length)];
 
-      if (!ownedMonsters[drawnMonster.id]) {
+      // 進化ラインのどれかを持っていれば「所持済み」として新規追加しない
+      const isDuplicate = ownsLine(drawnMonster.id);
+      if (!isDuplicate) {
         ownedMonsters[drawnMonster.id] = { level: 1 };
       }
 
@@ -768,14 +791,15 @@
       saveData();
       updateUI();
 
-      const stats = getMonsterStats(drawnMonster.id);
+      const stats = getMonsterStats(drawnMonster.id) || drawnMonster;
 
       msg.innerText = "";
       resultDiv.classList.remove("hidden");
       resultDiv.innerHTML = `
         🎉 ガチャ結果 🎉<br>
         <img class="gacha-img aura-${stats.rarity}" src="${stats.img}"><br>
-        <span class="rarity-${stats.rarity}">[${stats.rarity}] ${stats.name}</span> を手に入れた！
+        <span class="rarity-${stats.rarity}">[${stats.rarity}] ${stats.name}</span>
+        ${isDuplicate ? "は、すでに持っているよ！" : "を手に入れた！"}
       `;
     }
 
