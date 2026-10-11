@@ -250,14 +250,14 @@
       <button class="btn btn-hard" onclick="startStage('hard')">👑 上級 (少しむずかしい計算) [+50pt]</button>
     </div>
 
-    <!-- 2. ダンジョン選択画面 -->
+    <!-- 2. ダンジョン選択画面（ボタンは dungeonData から自動で作られる） -->
     <div id="dungeon-select-screen" class="hidden">
       <h3>🏰 難関大学ダンジョン</h3>
       <div class="dungeon-info">
         全問正解してダンジョンを完全攻略しよう！<br>
-        クリアで <b>300pt ＋ 進化素材「E-キューブ」</b> を獲得！
+        クリアで <b>ポイント ＋ 進化素材「E-キューブ」</b> を獲得！
       </div>
-      <button class="btn btn-dungeon" onclick="startDungeon('tokyo')">🎓 東京大学ダンジョン (全5問) [+300pt / 🧊1個]</button>
+      <div id="dungeon-list"></div>
     </div>
 
     <!-- 3. バトル・クイズ画面 -->
@@ -357,7 +357,7 @@
     // name は画面に表示される名前。自由に書き換えてOK。
     // aura は枠の見た目（N / R / SR）。
     // 敵を増やすときは、ここに1行足して、下の
-    // stageEnemies / dungeonEnemies にIDを追加する。
+    // stageEnemies / dungeonData の enemies にIDを追加する。
     // =====================================================
     const enemyData = {
       "e1": { id: "e1", name: "サボスラ", img: "./IMG_1414.png", aura: "N" }
@@ -370,8 +370,36 @@
       hard: ["e1"]
     };
 
-    // ダンジョンの階層ごとに出る敵（1階層目から順番。足りなければ繰り返す）
-    const dungeonEnemies = ["e1", "e1", "e1", "e1", "e1"];
+    // =====================================================
+    // ダンジョンデータ
+    // ダンジョンを増やすときは、ここに1つ書き足して、
+    // quizData に quizKey の問題集を足す。
+    //   name / icon : 画面に表示される名前とアイコン
+    //   reward      : クリア報酬のポイント
+    //   cubes       : クリア報酬のE-キューブの数
+    //   enemies     : 階層ごとに出る敵のID（この数が階層数になる）
+    //   quizKey     : quizData のどの問題集を使うか
+    //   baseHp      : 第1階層の敵のHP
+    //   hpPerStep   : 第2階層以降、階層ごとに増えるHP
+    //
+    // 【追加の見本】
+    // kyoto: {
+    //   name: "京都大学ダンジョン", icon: "🏯",
+    //   reward: 300, cubes: 1,
+    //   enemies: ["e1", "e1", "e1", "e1", "e1"],
+    //   quizKey: "dungeon_kyoto",
+    //   baseHp: 120, hpPerStep: 10
+    // }
+    // =====================================================
+    const dungeonData = {
+      tokyo: {
+        name: "東京大学ダンジョン", icon: "🎓",
+        reward: 300, cubes: 1,
+        enemies: ["e1", "e1", "e1", "e1", "e1"],
+        quizKey: "dungeon_tokyo",
+        baseHp: 120, hpPerStep: 10
+      }
+    };
 
     // 敵の名前・画像・枠を切り替える
     function setEnemy(id) {
@@ -383,9 +411,24 @@
       img.className = `fighter-img aura-${e.aura || "N"}`;
     }
 
+    // ダンジョン選択画面のボタンを dungeonData から作る
+    function renderDungeonList() {
+      const box = document.getElementById("dungeon-list");
+      box.innerHTML = "";
+      Object.keys(dungeonData).forEach(id => {
+        const d = dungeonData[id];
+        const btn = document.createElement("button");
+        btn.className = "btn btn-dungeon";
+        btn.innerText = `${d.icon} ${d.name} (全${d.enemies.length}問) [+${d.reward}pt / 🧊${d.cubes}個]`;
+        btn.onclick = () => startDungeon(id);
+        box.appendChild(btn);
+      });
+    }
+
     // バトル・ダンジョン用変数
     let currentStage = "";
     let isDungeonMode = false;
+    let currentDungeon = null; // 挑戦中のダンジョンのデータ
     let dungeonStep = 0;
     let dungeonTotalSteps = 5;
     let stageReward = 0;
@@ -422,7 +465,7 @@
         { q: "100 - 15 × 4 = ?", options: [40, 60, 30], a: 40, explain: "" },
         { q: "150 ÷ 5 + 20 = ?", options: [50, 40, 60], a: 50, explain: "" }
       ],
-      dungeon: [
+      dungeon_tokyo: [
         { q: "3x + 5 = 20 のとき、x は？", options: [5, 4, 6], a: 5, explain: "" },
         { q: "半径 3cm の円の面積は？ (円周率3.14)", options: [28.26, 18.84, 31.4], a: 28.26, explain: "" },
         { q: "25 × 12 = ?", options: [300, 250, 350], a: 300, explain: "" },
@@ -433,13 +476,13 @@
 
     // 問題を1問取り出す
     // source の形:
-    //   { type: "stage", key: "easy" }      通常ステージ
-    //   { type: "dungeon", step: 1 }        ダンジョン（第step階層）
+    //   { type: "stage", key: "easy" }                        通常ステージ
+    //   { type: "dungeon", quizKey: "dungeon_tokyo", step: 1 } ダンジョン（第step階層）
     // 戻り値: { q, options, answer, explain }
     function getQuestion(source) {
       let item;
       if (source.type === "dungeon") {
-        const list = quizData.dungeon;
+        const list = quizData[source.quizKey];
         item = list[(source.step - 1) % list.length];
       } else {
         const list = quizData[source.key];
@@ -462,6 +505,7 @@
 
     // ロード
     window.onload = function() {
+      renderDungeonList();
       loadData();
     };
 
@@ -655,6 +699,7 @@
     // 通常ステージ開始
     function startStage(difficulty) {
       isDungeonMode = false;
+      currentDungeon = null;
       currentStage = difficulty;
       enemyHP = 100;
       enemyMaxHP = 100;
@@ -687,21 +732,26 @@
       updateUI();
     }
 
-    // ダンジョン開始
-    function startDungeon(type) {
+    // ダンジョン開始（dungeonData のIDを受け取る）
+    function startDungeon(dungeonId) {
+      const d = dungeonData[dungeonId];
+      if (!d) return;
+
       isDungeonMode = true;
+      currentDungeon = d;
       dungeonStep = 1;
-      stageReward = 300;
-      enemyHP = 120;
-      enemyMaxHP = 120;
+      dungeonTotalSteps = d.enemies.length;
+      stageReward = d.reward;
+      enemyHP = d.baseHp;
+      enemyMaxHP = d.baseHp;
       document.getElementById("message").innerText = "";
 
       initBattleStatus();
 
       // 第1階層の敵
-      setEnemy(dungeonEnemies[0]);
+      setEnemy(d.enemies[0]);
 
-      document.getElementById("stage-title").innerText = "🎓 東京大学ダンジョン";
+      document.getElementById("stage-title").innerText = `${d.icon} ${d.name}`;
       document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
 
       document.getElementById("dungeon-select-screen").classList.add("hidden");
@@ -735,7 +785,7 @@
     // 次の問題（問題モジュールから1問もらって画面に表示する）
     function nextQuestion() {
       const source = isDungeonMode
-        ? { type: "dungeon", step: dungeonStep }
+        ? { type: "dungeon", quizKey: currentDungeon.quizKey, step: dungeonStep }
         : { type: "stage", key: currentStage };
       currentQuiz = getQuestion(source);
 
@@ -782,17 +832,17 @@
           if (isDungeonMode) {
             if (dungeonStep >= dungeonTotalSteps) {
               battleActive = false; // クリア確定：以降の入力を無効化
-              userPoints += stageReward;
-              userCubes += 1;
+              userPoints += currentDungeon.reward;
+              userCubes += currentDungeon.cubes;
               saveData();
-              message.innerText = `🎉 ダンジョン完全クリア！ 特別報酬: ${stageReward}pt ＆ 🧊E-キューブ 1個ゲット！`;
+              message.innerText = `🎉 ダンジョン完全クリア！ 特別報酬: ${currentDungeon.reward}pt ＆ 🧊E-キューブ ${currentDungeon.cubes}個ゲット！`;
               setTimeout(() => { showStageSelect(); }, 2500);
             } else {
               dungeonStep++;
-              enemyHP = 120 + (dungeonStep * 10);
+              enemyHP = currentDungeon.baseHp + (dungeonStep * currentDungeon.hpPerStep);
               enemyMaxHP = enemyHP;
               // 階層が進んだので、その階層の敵に切り替える
-              setEnemy(dungeonEnemies[(dungeonStep - 1) % dungeonEnemies.length]);
+              setEnemy(currentDungeon.enemies[(dungeonStep - 1) % currentDungeon.enemies.length]);
               document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
               message.innerText = `✨ 敵を撃破！第 ${dungeonStep} 階層に進みます！`;
               nextQuestion();
