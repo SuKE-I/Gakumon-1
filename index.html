@@ -279,8 +279,8 @@
 
         <!-- 敵（右） -->
         <div class="fighter-box">
-          <div style="font-size:12px; font-weight:bold;">👾 敵</div>
-          <img id="enemy-battle-img" class="fighter-img aura-N" src="./IMG_1393.jpeg" alt="敵">
+          <div id="enemy-name" style="font-size:12px; font-weight:bold;">👾 敵</div>
+          <img id="enemy-battle-img" class="fighter-img aura-N" src="./IMG_1414.png" alt="敵">
           <div style="font-size:11px;">HP: <span id="enemy-hp-text">100</span></div>
           <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill-enemy"></div></div>
         </div>
@@ -351,6 +351,37 @@
 
     // ガチャ用ベースプールID（進化前ガクモンのみ出現）
     const gachaPool = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
+
+    // =====================================================
+    // 敵データ
+    // name は画面に表示される名前。自由に書き換えてOK。
+    // aura は枠の見た目（N / R / SR）。
+    // 敵を増やすときは、ここに1行足して、下の
+    // stageEnemies / dungeonEnemies にIDを追加する。
+    // =====================================================
+    const enemyData = {
+      "e1": { id: "e1", name: "サボスラ", img: "./IMG_1414.png", aura: "N" }
+    };
+
+    // ステージごとに出る敵（複数あればランダム）
+    const stageEnemies = {
+      easy: ["e1"],
+      medium: ["e1"],
+      hard: ["e1"]
+    };
+
+    // ダンジョンの階層ごとに出る敵（1階層目から順番。足りなければ繰り返す）
+    const dungeonEnemies = ["e1", "e1", "e1", "e1", "e1"];
+
+    // 敵の名前・画像・枠を切り替える
+    function setEnemy(id) {
+      const e = enemyData[id];
+      if (!e) return;
+      document.getElementById("enemy-name").innerText = "👾 " + e.name;
+      const img = document.getElementById("enemy-battle-img");
+      img.src = e.img;
+      img.className = `fighter-img aura-${e.aura || "N"}`;
+    }
 
     // バトル・ダンジョン用変数
     let currentStage = "";
@@ -632,6 +663,10 @@
 
       initBattleStatus();
 
+      // このステージに出る敵の中から1体選ぶ
+      const enemyList = stageEnemies[difficulty] || ["e1"];
+      setEnemy(enemyList[Math.floor(Math.random() * enemyList.length)]);
+
       if (difficulty === 'easy') {
         stageReward = 10;
         document.getElementById("stage-title").innerText = "🌱 初級ステージ";
@@ -662,6 +697,9 @@
       document.getElementById("message").innerText = "";
 
       initBattleStatus();
+
+      // 第1階層の敵
+      setEnemy(dungeonEnemies[0]);
 
       document.getElementById("stage-title").innerText = "🎓 東京大学ダンジョン";
       document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
@@ -753,6 +791,8 @@
               dungeonStep++;
               enemyHP = 120 + (dungeonStep * 10);
               enemyMaxHP = enemyHP;
+              // 階層が進んだので、その階層の敵に切り替える
+              setEnemy(dungeonEnemies[(dungeonStep - 1) % dungeonEnemies.length]);
               document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
               message.innerText = `✨ 敵を撃破！第 ${dungeonStep} 階層に進みます！`;
               nextQuestion();
