@@ -363,31 +363,68 @@
     let currentQuiz = null;
     let battleActive = false; // 戦闘中のみ回答を受け付ける（クリア後の連打対策）
 
-    // クイズ問題集
+    // =====================================================
+    // 問題モジュール
+    // バトル側は getQuestion() で問題を1問受け取り、
+    // judgeAnswer() で正解かどうかを判定するだけ。
+    // 将来、単元別（技）の問題に差し替えるときは、
+    // このモジュールの中身だけを変更すればよい。
+    // =====================================================
+
+    // クイズ問題集（explain は解説用。あとで中身を入れる）
     const quizData = {
       easy: [
-        { q: "15 + 27 = ?", options: [42, 32, 52], a: 42 },
-        { q: "50 - 18 = ?", options: [32, 28, 38], a: 32 },
-        { q: "8 + 9 = ?", options: [17, 16, 18], a: 17 }
+        { q: "15 + 27 = ?", options: [42, 32, 52], a: 42, explain: "" },
+        { q: "50 - 18 = ?", options: [32, 28, 38], a: 32, explain: "" },
+        { q: "8 + 9 = ?", options: [17, 16, 18], a: 17, explain: "" }
       ],
       medium: [
-        { q: "7 × 8 = ?", options: [56, 54, 64], a: 56 },
-        { q: "72 ÷ 9 = ?", options: [8, 7, 9], a: 8 },
-        { q: "12 × 4 = ?", options: [48, 44, 52], a: 48 }
+        { q: "7 × 8 = ?", options: [56, 54, 64], a: 56, explain: "" },
+        { q: "72 ÷ 9 = ?", options: [8, 7, 9], a: 8, explain: "" },
+        { q: "12 × 4 = ?", options: [48, 44, 52], a: 48, explain: "" }
       ],
       hard: [
-        { q: "(12 + 8) × 3 = ?", options: [60, 50, 40], a: 60 },
-        { q: "100 - 15 × 4 = ?", options: [40, 60, 30], a: 40 },
-        { q: "150 ÷ 5 + 20 = ?", options: [50, 40, 60], a: 50 }
+        { q: "(12 + 8) × 3 = ?", options: [60, 50, 40], a: 60, explain: "" },
+        { q: "100 - 15 × 4 = ?", options: [40, 60, 30], a: 40, explain: "" },
+        { q: "150 ÷ 5 + 20 = ?", options: [50, 40, 60], a: 50, explain: "" }
       ],
       dungeon: [
-        { q: "3x + 5 = 20 のとき、x は？", options: [5, 4, 6], a: 5 },
-        { q: "半径 3cm の円の面積は？ (円周率3.14)", options: [28.26, 18.84, 31.4], a: 28.26 },
-        { q: "25 × 12 = ?", options: [300, 250, 350], a: 300 },
-        { q: "(4 + 6) × (8 - 3) = ?", options: [50, 45, 60], a: 50 },
-        { q: "1, 2, 4, 8, 16 の次に入る数は？", options: [32, 24, 64], a: 32 }
+        { q: "3x + 5 = 20 のとき、x は？", options: [5, 4, 6], a: 5, explain: "" },
+        { q: "半径 3cm の円の面積は？ (円周率3.14)", options: [28.26, 18.84, 31.4], a: 28.26, explain: "" },
+        { q: "25 × 12 = ?", options: [300, 250, 350], a: 300, explain: "" },
+        { q: "(4 + 6) × (8 - 3) = ?", options: [50, 45, 60], a: 50, explain: "" },
+        { q: "1, 2, 4, 8, 16 の次に入る数は？", options: [32, 24, 64], a: 32, explain: "" }
       ]
     };
+
+    // 問題を1問取り出す
+    // source の形:
+    //   { type: "stage", key: "easy" }      通常ステージ
+    //   { type: "dungeon", step: 1 }        ダンジョン（第step階層）
+    // 戻り値: { q, options, answer, explain }
+    function getQuestion(source) {
+      let item;
+      if (source.type === "dungeon") {
+        const list = quizData.dungeon;
+        item = list[(source.step - 1) % list.length];
+      } else {
+        const list = quizData[source.key];
+        item = list[Math.floor(Math.random() * list.length)];
+      }
+      return {
+        q: item.q,
+        options: [...item.options],
+        answer: item.a,
+        explain: item.explain || ""
+      };
+    }
+
+    // 正解かどうかを判定する
+    function judgeAnswer(question, selected) {
+      return selected === question.answer;
+    }
+
+    // =====================================================
 
     // ロード
     window.onload = function() {
@@ -654,16 +691,12 @@
       }
     }
 
-    // 次の問題
+    // 次の問題（問題モジュールから1問もらって画面に表示する）
     function nextQuestion() {
-      let questions = [];
-      if (isDungeonMode) {
-        questions = quizData.dungeon;
-        currentQuiz = questions[(dungeonStep - 1) % questions.length];
-      } else {
-        questions = quizData[currentStage];
-        currentQuiz = questions[Math.floor(Math.random() * questions.length)];
-      }
+      const source = isDungeonMode
+        ? { type: "dungeon", step: dungeonStep }
+        : { type: "stage", key: currentStage };
+      currentQuiz = getQuestion(source);
 
       document.getElementById("question").innerText = "問題: " + currentQuiz.q;
       
@@ -687,7 +720,7 @@
       const message = document.getElementById("message");
       const partner = getMonsterStats(partnerId);
 
-      if (selected === currentQuiz.a) {
+      if (judgeAnswer(currentQuiz, selected)) {
         let damage = playerATK;
         let isCritical = false;
 
