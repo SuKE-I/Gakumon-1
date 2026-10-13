@@ -121,6 +121,7 @@
       font-weight: bold;
       margin-top: 15px;
       font-size: 15px;
+      white-space: pre-line;
     }
     .hidden { display: none; }
 
@@ -245,9 +246,9 @@
     <!-- 1. ステージ選択画面 -->
     <div id="stage-select-screen">
       <h3>挑戦するステージを選ぼう！</h3>
-      <button class="btn btn-easy" onclick="startStage('easy')">🌱 初級 (たし算・ひき算) [+10pt]</button>
-      <button class="btn btn-medium" onclick="startStage('medium')">🔥 中級 (かけ算・わり算) [+30pt]</button>
-      <button class="btn btn-hard" onclick="startStage('hard')">👑 上級 (少しむずかしい計算) [+50pt]</button>
+      <button class="btn btn-easy" onclick="startStage('easy')">🌱 初級 (展開・不等式・絶対値) [+10pt]</button>
+      <button class="btn btn-medium" onclick="startStage('medium')">🔥 中級 (因数分解・二次関数・判別式) [+30pt]</button>
+      <button class="btn btn-hard" onclick="startStage('hard')">👑 上級 (三角比・場合の数・確率・データ) [+50pt]</button>
     </div>
 
     <!-- 2. ダンジョン選択画面（ボタンは dungeonData から自動で作られる） -->
@@ -288,6 +289,7 @@
 
       <hr>
 
+      <div id="topic-label" style="font-size:13px; font-weight:bold; color:#8e44ad;"></div>
       <h2 id="question">問題: </h2>
       <div id="options"></div>
 
@@ -353,6 +355,402 @@
     const gachaPool = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
 
     // =====================================================
+    // 問題モジュール
+    // バトル側は getQuestion() で問題を1問受け取り、
+    // judgeAnswer() で正解かどうかを判定するだけ。
+    // 問題は単元ごとの生成関数で、数字をランダムに変えて作る。
+    // 単元を増やすときは、gen○○ 関数を作って topicData に1行足す。
+    // =====================================================
+
+    // ===== ユーティリティ =====
+    function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+    function rndNZ(a, b) { let v = 0; while (v === 0) v = rnd(a, b); return v; }
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcd(b, a % b); }
+    function sg(n) { return n < 0 ? "−" + (-n) : String(n); }
+    function par(n) { return n < 0 ? "(−" + (-n) + ")" : String(n); }
+    function term(c, v, first) {
+      if (c === 0) return "";
+      const abs = Math.abs(c);
+      const body = v === "" ? String(abs) : (abs === 1 ? "" : String(abs)) + v;
+      if (first) return (c < 0 ? "−" : "") + body;
+      return (c < 0 ? "−" : "+") + body;
+    }
+    function poly(a, b, c) {
+      let s = term(a, "x²", true);
+      s += term(b, "x", s === "");
+      s += term(c, "", s === "");
+      return s === "" ? "0" : s;
+    }
+    function lin1(p, a) { return term(p, "x", true) + term(a, "", false); }
+    function frac(n, d) { const g = gcd(n, d); n /= g; d /= g; return d === 1 ? String(n) : n + "/" + d; }
+    function fracOrNull(n, d) { return (n < 1 || n > d) ? null : frac(n, d); }
+    function redText(n, d) { const f = frac(n, d), raw = n + "/" + d; return f === raw ? raw : raw + " = " + f; }
+    function fmtNum(x) { return String(Math.round(x * 100) / 100); }
+    function posOrNull(x) { return x > 0 ? x : null; }
+    function nCr(n, r) { let v = 1; for (let i = 1; i <= r; i++) v = v * (n - r + i) / i; return Math.round(v); }
+    function nPr(n, r) { let v = 1; for (let i = 0; i < r; i++) v *= (n - i); return v; }
+    function factorial(n) { let v = 1; for (let i = 2; i <= n; i++) v *= i; return v; }
+    function prodText(n, r) { const a = []; for (let i = 0; i < r; i++) a.push(n - i); return a.join("×"); }
+
+    // 選択肢（正解＋間違い）を4つ作る。間違いが足りなければ filler で補う
+    function buildOptions(correct, wrongs, filler) {
+      const opts = [String(correct)];
+      shuffle(wrongs).forEach(w => {
+        if (w === null || w === undefined) return;
+        w = String(w);
+        if (!opts.includes(w) && opts.length < 4) opts.push(w);
+      });
+      let guard = 0;
+      while (opts.length < 4 && guard++ < 200) {
+        const w = String(filler());
+        if (!opts.includes(w)) opts.push(w);
+      }
+      return opts;
+    }
+    function makeQ(q, answer, wrongs, filler, explain) {
+      return { q: q, answer: String(answer), options: buildOptions(answer, wrongs, filler), explain: explain };
+    }
+
+    // ===== 各単元の問題生成 =====
+    // diff（難しさ）: 1=初級 2=中級 3=上級 4=ダンジョン
+
+    // 展開
+    function genExpand(diff) {
+      const r = diff <= 1 ? 5 : diff === 2 ? 7 : 9;
+      let p = 1, q = 1;
+      if (diff >= 3 && Math.random() < 0.6) { p = pick([1, 2, 3]); q = pick([1, 2]); }
+      const a = rndNZ(-r, r), b = rndNZ(-r, r);
+      const A = p * q, B = p * b + q * a, C = a * b;
+      const ans = poly(A, B, C);
+      const wrongs = [poly(A, -B, C), poly(A, B, -C), poly(A, 0, C), poly(A, a + b, C), poly(A, B, a + b)];
+      const expr = `(${lin1(p, a)})(${lin1(q, b)})`;
+      const explain = (p === 1 && q === 1)
+        ? `xの係数は ${par(a)}+${par(b)}=${sg(B)}、定数項は ${par(a)}×${par(b)}=${sg(C)}`
+        : `x²の係数 ${p}×${q}=${A}、xの係数 ${p}×${par(b)}+${q}×${par(a)}=${sg(B)}、定数項 ${par(a)}×${par(b)}=${sg(C)}`;
+      return makeQ(`${expr} を展開すると？`, ans, wrongs, () => poly(A, B + rndNZ(-4, 4), C), explain);
+    }
+
+    // 因数分解
+    function genFactor(diff) {
+      const r = diff <= 1 ? 6 : diff === 2 ? 8 : 9;
+      const p = (diff >= 3 && Math.random() < 0.5) ? pick([2, 3]) : 1;
+      let u = rndNZ(-r, r);
+      while (p > 1 && gcd(p, u) !== 1) u = rndNZ(-r, r);
+      const v = rndNZ(-r, r);
+      const fs = (pp, uu, vv) => {
+        if (pp === 1) {
+          const s = [uu, vv].sort((x, y) => x - y);
+          return `(${lin1(1, s[0])})(${lin1(1, s[1])})`;
+        }
+        return `(${lin1(pp, uu)})(${lin1(1, vv)})`;
+      };
+      const target = [p, p * v + u, u * v];
+      const cands = [[p, -u, -v], [p, u, -v], [p, -u, v], [p, v, u], [p, u + 1, v], [p, u, v + 1]];
+      // 展開すると正解と同じになってしまう候補は、間違いの選択肢から外す
+      const wrongs = cands
+        .filter(c => c[1] !== 0 && c[2] !== 0)
+        .filter(c => !(c[0] === target[0] && c[0] * c[2] + c[1] === target[1] && c[1] * c[2] === target[2]))
+        .map(c => fs(c[0], c[1], c[2]));
+      const ans = fs(p, u, v);
+      const expr = poly(p, p * v + u, u * v);
+      const explain = p === 1
+        ? `足して${sg(u + v)}、かけて${sg(u * v)}になる2数は ${sg(u)} と ${sg(v)}`
+        : `たすき掛けで ${ans}（展開すると ${expr}）`;
+      return makeQ(`${expr} を因数分解すると？`, ans, wrongs, () => {
+        let uu = 0, vv = 0;
+        while (uu === 0) uu = u + rndNZ(-3, 3);
+        while (vv === 0) vv = v + rndNZ(-3, 3);
+        return fs(p, uu, vv);
+      }, explain);
+    }
+
+    // 一次不等式
+    const IFLIP = { ">": "<", "<": ">", "≥": "≤", "≤": "≥" };
+    function genLinearIneq(diff) {
+      const r = diff <= 1 ? 6 : 9;
+      const aMax = diff <= 2 ? 5 : 9;
+      let a = rnd(2, aMax);
+      if (diff >= 2 && Math.random() < 0.5) a = -a;
+      const k = rndNZ(-r, r), b = rndNZ(-10, 10), c = a * k + b;
+      const sym = pick([">", "<", "≥", "≤"]);
+      const sol = a > 0 ? sym : IFLIP[sym];
+      const ans = `x ${sol} ${sg(k)}`;
+      const wrongs = [`x ${IFLIP[sol]} ${sg(k)}`, `x ${sol} ${sg(-k)}`, `x ${IFLIP[sol]} ${sg(-k)}`, `x ${sol} ${sg(k + 1)}`];
+      const explain = `移項して ${term(a, "x", true)} ${sym} ${sg(c - b)}。両辺を${sg(a)}で割る${a < 0 ? "と、不等号の向きが逆になって" : "と"} ${ans}`;
+      return makeQ(`${term(a, "x", true)}${term(b, "", false)} ${sym} ${sg(c)} の解は？`, ans, wrongs,
+        () => `x ${sol} ${sg(k + rndNZ(-4, 4))}`, explain);
+    }
+
+    // 絶対値
+    function genAbs(diff) {
+      const a = rndNZ(-9, 9), b = rnd(1, diff <= 1 ? 6 : 9);
+      const inner = `x${term(-a, "", false)}`;
+      const type = diff <= 1 ? "eq" : pick(["eq", "lt", "gt"]);
+      const pairStr = (s, t) => s === t ? `x = ${sg(s)}` : `x = ${sg(Math.min(s, t))}, ${sg(Math.max(s, t))}`;
+      const between = (s, t) => `${sg(s)} < x < ${sg(t)}`;
+      const outside = (s, t) => `x < ${sg(s)}, ${sg(t)} < x`;
+      const lo = a - b, hi = a + b;
+      if (type === "eq") {
+        return makeQ(`|${inner}| = ${b} を解くと？`, pairStr(lo, hi),
+          [pairStr(-a - b, -a + b), pairStr(hi, hi), pairStr(lo, lo), pairStr(-b, b)],
+          () => pairStr(lo + rndNZ(-3, 3), hi + rndNZ(-3, 3)),
+          `${inner} = ${b} または ${inner} = −${b} より、${pairStr(lo, hi)}`);
+      }
+      if (type === "lt") {
+        return makeQ(`|${inner}| < ${b} を解くと？`, between(lo, hi),
+          [outside(lo, hi), between(-a - b, -a + b), outside(-a - b, -a + b), between(-b, b)],
+          () => between(lo - rnd(1, 3), hi + rnd(1, 3)),
+          `−${b} < ${inner} < ${b} より、${between(lo, hi)}`);
+      }
+      return makeQ(`|${inner}| > ${b} を解くと？`, outside(lo, hi),
+        [between(lo, hi), outside(-a - b, -a + b), between(-a - b, -a + b), outside(-b, b)],
+        () => outside(lo - rnd(1, 3), hi + rnd(1, 3)),
+        `${inner} < −${b} または ${inner} > ${b} より、${outside(lo, hi)}`);
+    }
+
+    // 二次関数の頂点
+    function genQuadVertex(diff) {
+      const a = diff <= 1 ? 1 : diff === 2 ? pick([1, -1]) : pick([1, -1, 2, -2]);
+      const h = rndNZ(-6, 6), k = rndNZ(-9, 9);
+      const b = -2 * a * h, c = a * h * h + k;
+      const ans = `(${sg(h)}, ${sg(k)})`;
+      const wrongs = [
+        `(${sg(-h)}, ${sg(k)})`, `(${sg(h)}, ${sg(-k)})`, `(${sg(-h)}, ${sg(-k)})`,
+        `(${sg(h)}, ${sg(c)})`, `(${sg(k)}, ${sg(h)})`
+      ];
+      const lead = a === 1 ? "" : a === -1 ? "−" : sg(a);
+      return makeQ(`y = ${poly(a, b, c)} の頂点の座標は？`, ans, wrongs,
+        () => `(${sg(h + rndNZ(-3, 3))}, ${sg(k)})`,
+        `平方完成すると y = ${lead}(x${term(-h, "", false)})²${term(k, "", false)}。頂点は ${ans}`);
+    }
+
+    // 判別式
+    function genDiscriminant(diff) {
+      const types = diff <= 1 ? ["A"] : diff === 2 ? ["A", "B"] : ["A", "B", "C"];
+      const t = pick(types);
+      if (t === "A") {
+        const b = rndNZ(-6, 6) * 2;
+        const k = b * b / 4;
+        return makeQ(`x²${term(b, "x", false)}+k = 0 が重解をもつとき、k の値は？`, `k = ${k}`,
+          [`k = ${b * b / 2}`, `k = ${sg(b / 2)}`, `k = ${sg(-k)}`, `k = ${b * b}`],
+          () => `k = ${sg(k + rndNZ(-5, 5))}`,
+          `重解 ⇔ 判別式 D = 0。D = ${par(b)}² − 4k = 0 より k = ${k}`);
+      }
+      if (t === "B") {
+        const b = rndNZ(-8, 8), c = rndNZ(-9, 9);
+        const D = b * b - 4 * c;
+        return makeQ(`x²${term(b, "x", false)}${term(c, "", false)} = 0 の判別式 D の値は？`, sg(D),
+          [sg(b * b + 4 * c), sg(b * b - 2 * c), sg(4 * c - b * b), sg(b - 4 * c)],
+          () => sg(D + rndNZ(-6, 6)),
+          `D = b² − 4ac = ${par(b)}² − 4×1×${par(c)} = ${sg(D)}`);
+      }
+      const m = rnd(2, 6);
+      return makeQ(`x²+kx+${m * m} = 0 が重解をもつとき、k の値は？`, `k = ±${2 * m}`,
+        [`k = ${2 * m}`, `k = ±${m}`, `k = ±${m * m}`, `k = ±${4 * m}`],
+        () => `k = ±${2 * m + rndNZ(-3, 3)}`,
+        `D = k² − 4×${m * m} = 0 より k² = ${4 * m * m}、k = ±${2 * m}`);
+    }
+
+    // 三角比
+    const TRIG = {
+      0:   { sin: "0",    cos: "1",     tan: "0" },
+      30:  { sin: "1/2",  cos: "√3/2",  tan: "√3/3" },
+      45:  { sin: "√2/2", cos: "√2/2",  tan: "1" },
+      60:  { sin: "√3/2", cos: "1/2",   tan: "√3" },
+      90:  { sin: "1",    cos: "0" },
+      120: { sin: "√3/2", cos: "−1/2",  tan: "−√3" },
+      135: { sin: "√2/2", cos: "−√2/2", tan: "−1" },
+      150: { sin: "1/2",  cos: "−√3/2", tan: "−√3/3" },
+      180: { sin: "0",    cos: "−1",    tan: "0" }
+    };
+    const TRIG_POOL = ["0", "1/2", "√2/2", "√3/2", "1", "√3/3", "√3", "−1/2", "−√2/2", "−√3/2", "−1", "−√3/3", "−√3"];
+    function genTrig(diff) {
+      const angles = diff <= 2 ? [30, 45, 60] : [0, 30, 45, 60, 90, 120, 135, 150, 180];
+      const ang = pick(angles);
+      const row = TRIG[ang];
+      const f = pick(Object.keys(row));
+      const ans = row[f];
+      const others = Object.keys(row).filter(k => k !== f).map(k => row[k]);
+      const wrongs = others.concat(shuffle(TRIG_POOL).slice(0, 4));
+      let why;
+      if (ang === 30 || ang === 60) why = "30°・60°・90°の直角三角形（辺の比 1 : 2 : √3）より";
+      else if (ang === 45) why = "直角二等辺三角形（辺の比 1 : 1 : √2）より";
+      else why = "単位円（半径1）上の点の座標 (cos, sin) から考えて";
+      return makeQ(`${f} ${ang}° の値は？`, ans, wrongs, () => pick(TRIG_POOL), `${why} ${f} ${ang}° = ${ans}`);
+    }
+
+    // 順列・組合せ
+    function genCombi(diff) {
+      const n = diff <= 2 ? rnd(5, 8) : rnd(6, 10);
+      const r = diff <= 2 ? rnd(2, 3) : rnd(2, 4);
+      const type = pick(diff <= 1 ? ["C", "P"] : ["C", "P", "F"]);
+      if (type === "C") {
+        const ans = nCr(n, r);
+        return makeQ(`${n}人から${r}人を選ぶ方法は何通り？`, ans,
+          [nPr(n, r), n * r, nCr(n + 1, r), nCr(n, r - 1)],
+          () => Math.max(1, ans + rndNZ(-10, 10)),
+          `${n}C${r} = (${prodText(n, r)}) ÷ (${prodText(r, r)}) = ${ans}`);
+      }
+      if (type === "P") {
+        const ans = nPr(n, r);
+        return makeQ(`${n}人から${r}人を選んで1列に並べる方法は何通り？`, ans,
+          [nCr(n, r), n * r, nPr(n + 1, r), nPr(n, r + 1)],
+          () => Math.max(1, ans + rndNZ(-10, 10)),
+          `${n}P${r} = ${prodText(n, r)} = ${ans}`);
+      }
+      const m = rnd(4, 6), ans = factorial(m);
+      return makeQ(`${m}人が1列に並ぶ方法は何通り？`, ans,
+        [ans / 2, m * (m - 1), factorial(m - 1), factorial(m + 1), m * m],
+        () => Math.max(1, ans + rndNZ(-30, 30)),
+        `${m}! = ${prodText(m, m)} = ${ans}`);
+    }
+
+    // 確率
+    function genProb(diff) {
+      const types = diff <= 1 ? ["dice"] : diff === 2 ? ["dice", "coin"] : ["dice", "coin", "balls"];
+      const type = pick(types);
+      if (type === "dice") {
+        const s = rnd(2, 12), w = 6 - Math.abs(s - 7);
+        return makeQ(`サイコロを2個同時に投げるとき、目の和が${s}になる確率は？`, frac(w, 36),
+          [fracOrNull(w + 1, 36), fracOrNull(w - 1, 36), fracOrNull(w, 12), fracOrNull(w, 6), fracOrNull(w * 2, 36)],
+          () => frac(rnd(1, 35), 36),
+          `目の和が${s}になるのは ${w}通り、全体は 6×6=36通り。確率は ${redText(w, 36)}`);
+      }
+      if (type === "coin") {
+        const n = rnd(3, 5), k = rnd(1, n - 1), c = nCr(n, k), tot = Math.pow(2, n);
+        return makeQ(`コインを${n}回投げるとき、ちょうど${k}回だけ表が出る確率は？`, frac(c, tot),
+          [fracOrNull(c + 1, tot), fracOrNull(c - 1, tot), fracOrNull(1, tot), fracOrNull(c, tot / 2), fracOrNull(k, n)],
+          () => frac(rnd(1, tot - 1), tot),
+          `表がちょうど${k}回になる出方は ${n}C${k}=${c}通り、全体は 2^${n}=${tot}通り。確率は ${redText(c, tot)}`);
+      }
+      const r = rnd(3, 6), w = rnd(2, 5), tot = r + w, num = nCr(r, 2), den = nCr(tot, 2);
+      return makeQ(`赤玉${r}個、白玉${w}個が入った袋から、同時に2個取り出すとき、2個とも赤玉である確率は？`, frac(num, den),
+        [fracOrNull(num + 1, den), fracOrNull(num - 1, den), fracOrNull(r * r, tot * tot), fracOrNull(r, tot), fracOrNull(num, den + tot)],
+        () => frac(rnd(1, den - 1), den),
+        `2個とも赤玉になるのは ${r}C2=${num}通り、全体は ${tot}C2=${den}通り。確率は ${redText(num, den)}`);
+    }
+
+    // データの分析
+    function genData(diff) {
+      const types = diff <= 1 ? ["mean", "range"] : diff === 2 ? ["mean", "median", "range"] : ["median", "range", "variance"];
+      const type = pick(types);
+      const listText = arr => arr.join(", ");
+      const sumOf = arr => arr.reduce((x, y) => x + y, 0);
+      if (type === "mean") {
+        const vals = [rnd(2, 20), rnd(2, 20), rnd(2, 20), rnd(2, 20)];
+        const s4 = sumOf(vals);
+        const cands = [];
+        for (let v = 1; v <= 20; v++) if ((s4 + v) % 5 === 0) cands.push(v);
+        vals.push(pick(cands));
+        const data = shuffle(vals);
+        const sum = sumOf(data), mean = sum / 5;
+        const sorted = [...data].sort((x, y) => x - y);
+        return makeQ(`5個のデータ ${listText(data)} の平均値は？`, mean,
+          [posOrNull(mean + 1), posOrNull(mean - 1), posOrNull(mean + 2), posOrNull(mean - 2), sorted[2]],
+          () => Math.max(1, mean + rndNZ(-5, 5)),
+          `合計 ${sum} ÷ 5 = ${mean}`);
+      }
+      if (type === "median") {
+        const n = diff >= 3 ? pick([5, 6, 7]) : pick([5, 6]);
+        const data = [];
+        for (let i = 0; i < n; i++) data.push(rnd(3, 30));
+        const sorted = [...data].sort((x, y) => x - y);
+        const sum = sumOf(data);
+        let med, why, wrongs;
+        if (n % 2 === 1) {
+          const mid = (n - 1) / 2;
+          med = sorted[mid];
+          why = `小さい順に並べると ${listText(sorted)}。真ん中の値は ${med}`;
+          wrongs = [sorted[mid - 1], sorted[mid + 1], data[mid], fmtNum(sum / n)];
+        } else {
+          const s1 = sorted[n / 2 - 1], s2 = sorted[n / 2];
+          med = (s1 + s2) / 2;
+          why = `小さい順に並べると ${listText(sorted)}。真ん中の2つ ${s1}, ${s2} の平均で ${fmtNum(med)}`;
+          wrongs = [s1, s2, fmtNum(sum / n), fmtNum(med + 1)];
+        }
+        return makeQ(`${n}個のデータ ${listText(data)} の中央値は？`, fmtNum(med), wrongs,
+          () => fmtNum(Math.max(1, med + rndNZ(-4, 4))), why);
+      }
+      if (type === "range") {
+        const n = pick([5, 6]);
+        const data = [];
+        for (let i = 0; i < n; i++) data.push(rnd(1, 40));
+        const mx = Math.max.apply(null, data), mn = Math.min.apply(null, data), R = mx - mn;
+        const sorted = [...data].sort((x, y) => x - y);
+        return makeQ(`${n}個のデータ ${listText(data)} の範囲（最大値 − 最小値）は？`, R,
+          [posOrNull(R + 1), posOrNull(R - 1), mx, mx + mn, sorted[n - 1] - sorted[1]],
+          () => Math.max(1, R + rndNZ(-6, 6)),
+          `最大値 ${mx} − 最小値 ${mn} = ${R}`);
+      }
+      let m, devs, ss;
+      do {
+        m = rnd(8, 20);
+        devs = [rnd(-5, 5), rnd(-5, 5), rnd(-5, 5), rnd(-5, 5)];
+        devs.push(-sumOf(devs));
+        ss = devs.reduce((x, y) => x + y * y, 0);
+      } while (Math.abs(devs[4]) > 6 || ss === 0);
+      const data = shuffle(devs.map(d => m + d));
+      const v = ss / 5, absSum = devs.reduce((x, y) => x + Math.abs(y), 0);
+      return makeQ(`5個のデータ ${listText(data)} の分散は？`, fmtNum(v),
+        [ss, fmtNum(ss / 4), fmtNum(absSum / 5), fmtNum(v + 1), fmtNum(Math.sqrt(v))],
+        () => fmtNum(Math.max(0.2, v + rndNZ(-5, 5) * 0.2)),
+        `平均は ${m}。（各値−平均）² の合計は ${ss}、÷5 で ${fmtNum(v)}`);
+    }
+
+    // ===== 単元の一覧 =====
+    // subject: 教科（将来、理科などを足すときは subject を変えて追加する）
+    const topicData = {
+      expand:       { id: "expand",       subject: "math", name: "展開",           gen: genExpand },
+      factor:       { id: "factor",       subject: "math", name: "因数分解",       gen: genFactor },
+      linearIneq:   { id: "linearIneq",   subject: "math", name: "一次不等式",     gen: genLinearIneq },
+      abs:          { id: "abs",          subject: "math", name: "絶対値",         gen: genAbs },
+      quadVertex:   { id: "quadVertex",   subject: "math", name: "二次関数の頂点", gen: genQuadVertex },
+      discriminant: { id: "discriminant", subject: "math", name: "判別式",         gen: genDiscriminant },
+      trig:         { id: "trig",         subject: "math", name: "三角比",         gen: genTrig },
+      combi:        { id: "combi",        subject: "math", name: "順列・組合せ",   gen: genCombi },
+      prob:         { id: "prob",         subject: "math", name: "確率",           gen: genProb },
+      data:         { id: "data",         subject: "math", name: "データの分析",   gen: genData }
+    };
+    const MATH_TOPICS = Object.keys(topicData).filter(id => topicData[id].subject === "math");
+
+    // 通常ステージで出す単元と難しさ
+    const stageConfig = {
+      easy:   { topics: ["expand", "linearIneq", "abs"], diff: 1 },
+      medium: { topics: ["factor", "quadVertex", "discriminant"], diff: 2 },
+      hard:   { topics: ["trig", "combi", "prob", "data"], diff: 3 }
+    };
+
+    // 問題を1問取り出す
+    // source: { topics: ["expand", "factor"], diff: 2 }
+    //   topics の中からランダムに1単元を選んで出題する（直前と同じ単元は避ける）。
+    //   将来の「技」は、topics に技の単元を1つだけ入れて呼べばよい。
+    // 戻り値: { q, options, answer, explain, topicId, topicName }
+    let lastTopicId = null;
+    function getQuestion(source) {
+      let ids = source.topics.filter(id => topicData[id]);
+      if (ids.length > 1) ids = ids.filter(id => id !== lastTopicId);
+      const id = pick(ids);
+      lastTopicId = id;
+      const t = topicData[id];
+      const g = t.gen(source.diff || 1);
+      return { q: g.q, options: g.options, answer: g.answer, explain: g.explain || "", topicId: id, topicName: t.name };
+    }
+
+    // 正解かどうかを判定する
+    function judgeAnswer(question, selected) {
+      return selected === question.answer;
+    }
+
+    // =====================================================
     // 敵データ
     // name は画面に表示される名前。自由に書き換えてOK。
     // aura は枠の見た目（N / R / SR）。
@@ -372,13 +770,13 @@
 
     // =====================================================
     // ダンジョンデータ
-    // ダンジョンを増やすときは、ここに1つ書き足して、
-    // quizData に quizKey の問題集を足す。
+    // ダンジョンを増やすときは、ここに1つ書き足す。
     //   name / icon : 画面に表示される名前とアイコン
     //   reward      : クリア報酬のポイント
     //   cubes       : クリア報酬のE-キューブの数
     //   enemies     : 階層ごとに出る敵のID（この数が階層数になる）
-    //   quizKey     : quizData のどの問題集を使うか
+    //   topics      : 出題する単元のID（MATH_TOPICS は数学の全単元）
+    //   diff        : 問題の難しさ（1〜4）
     //   baseHp      : 第1階層の敵のHP
     //   hpPerStep   : 第2階層以降、階層ごとに増えるHP
     //
@@ -387,7 +785,7 @@
     //   name: "京都大学ダンジョン", icon: "🏯",
     //   reward: 300, cubes: 1,
     //   enemies: ["e1", "e1", "e1", "e1", "e1"],
-    //   quizKey: "dungeon_kyoto",
+    //   topics: MATH_TOPICS, diff: 4,
     //   baseHp: 120, hpPerStep: 10
     // }
     // =====================================================
@@ -396,7 +794,7 @@
         name: "東京大学ダンジョン", icon: "🎓",
         reward: 300, cubes: 1,
         enemies: ["e1", "e1", "e1", "e1", "e1"],
-        quizKey: "dungeon_tokyo",
+        topics: MATH_TOPICS, diff: 4,
         baseHp: 120, hpPerStep: 10
       }
     };
@@ -439,69 +837,6 @@
     let playerATK = 50;
     let currentQuiz = null;
     let battleActive = false; // 戦闘中のみ回答を受け付ける（クリア後の連打対策）
-
-    // =====================================================
-    // 問題モジュール
-    // バトル側は getQuestion() で問題を1問受け取り、
-    // judgeAnswer() で正解かどうかを判定するだけ。
-    // 将来、単元別（技）の問題に差し替えるときは、
-    // このモジュールの中身だけを変更すればよい。
-    // =====================================================
-
-    // クイズ問題集（explain は解説用。あとで中身を入れる）
-    const quizData = {
-      easy: [
-        { q: "15 + 27 = ?", options: [42, 32, 52], a: 42, explain: "" },
-        { q: "50 - 18 = ?", options: [32, 28, 38], a: 32, explain: "" },
-        { q: "8 + 9 = ?", options: [17, 16, 18], a: 17, explain: "" }
-      ],
-      medium: [
-        { q: "7 × 8 = ?", options: [56, 54, 64], a: 56, explain: "" },
-        { q: "72 ÷ 9 = ?", options: [8, 7, 9], a: 8, explain: "" },
-        { q: "12 × 4 = ?", options: [48, 44, 52], a: 48, explain: "" }
-      ],
-      hard: [
-        { q: "(12 + 8) × 3 = ?", options: [60, 50, 40], a: 60, explain: "" },
-        { q: "100 - 15 × 4 = ?", options: [40, 60, 30], a: 40, explain: "" },
-        { q: "150 ÷ 5 + 20 = ?", options: [50, 40, 60], a: 50, explain: "" }
-      ],
-      dungeon_tokyo: [
-        { q: "3x + 5 = 20 のとき、x は？", options: [5, 4, 6], a: 5, explain: "" },
-        { q: "半径 3cm の円の面積は？ (円周率3.14)", options: [28.26, 18.84, 31.4], a: 28.26, explain: "" },
-        { q: "25 × 12 = ?", options: [300, 250, 350], a: 300, explain: "" },
-        { q: "(4 + 6) × (8 - 3) = ?", options: [50, 45, 60], a: 50, explain: "" },
-        { q: "1, 2, 4, 8, 16 の次に入る数は？", options: [32, 24, 64], a: 32, explain: "" }
-      ]
-    };
-
-    // 問題を1問取り出す
-    // source の形:
-    //   { type: "stage", key: "easy" }                        通常ステージ
-    //   { type: "dungeon", quizKey: "dungeon_tokyo", step: 1 } ダンジョン（第step階層）
-    // 戻り値: { q, options, answer, explain }
-    function getQuestion(source) {
-      let item;
-      if (source.type === "dungeon") {
-        const list = quizData[source.quizKey];
-        item = list[(source.step - 1) % list.length];
-      } else {
-        const list = quizData[source.key];
-        item = list[Math.floor(Math.random() * list.length)];
-      }
-      return {
-        q: item.q,
-        options: [...item.options],
-        answer: item.a,
-        explain: item.explain || ""
-      };
-    }
-
-    // 正解かどうかを判定する
-    function judgeAnswer(question, selected) {
-      return selected === question.answer;
-    }
-
-    // =====================================================
 
     // ロード
     window.onload = function() {
@@ -784,11 +1119,10 @@
 
     // 次の問題（問題モジュールから1問もらって画面に表示する）
     function nextQuestion() {
-      const source = isDungeonMode
-        ? { type: "dungeon", quizKey: currentDungeon.quizKey, step: dungeonStep }
-        : { type: "stage", key: currentStage };
-      currentQuiz = getQuestion(source);
+      const conf = isDungeonMode ? currentDungeon : stageConfig[currentStage];
+      currentQuiz = getQuestion({ topics: conf.topics, diff: conf.diff });
 
+      document.getElementById("topic-label").innerText = `【${currentQuiz.topicName}】`;
       document.getElementById("question").innerText = "問題: " + currentQuiz.q;
       
       const optionsDiv = document.getElementById("options");
@@ -861,13 +1195,15 @@
         playerHP -= 30;
         if (playerHP < 0) playerHP = 0;
 
+        // 不正解のときは、正しい答えと解き方を表示する
+        const correctInfo = `\n正解：${currentQuiz.answer}\n${currentQuiz.explain}`;
         message.style.color = "red";
-        message.innerText = "❌ 不正解！ 30のダメージを受けた！";
+        message.innerText = "❌ 不正解！ 30のダメージを受けた！" + correctInfo;
 
         if (playerHP === 0) {
           battleActive = false; // 敗北確定：以降の入力を無効化
-          message.innerText = "💀 HPが0になった... 攻略失敗！";
-          setTimeout(() => { showStageSelect(); }, 2000);
+          message.innerText = "💀 HPが0になった... 攻略失敗！" + correctInfo;
+          setTimeout(() => { showStageSelect(); }, 4000);
         } else {
           nextQuestion();
         }
