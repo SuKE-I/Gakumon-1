@@ -71,13 +71,14 @@
     }
     .nav-tabs {
       display: flex;
-      gap: 5px;
+      gap: 4px;
       margin-bottom: 15px;
     }
     .nav-btn {
       flex: 1;
-      padding: 8px 4px;
-      font-size: 12px;
+      padding: 6px 2px;
+      font-size: 11px;
+      line-height: 1.3;
       border: none;
       background: #dfe4ea;
       border-radius: 6px;
@@ -106,9 +107,11 @@
     .btn-hard { background: #ff4757; }
     .btn-dungeon { background: #8e44ad; font-weight: bold; }
     .btn-gacha { background: #9b59b6; font-size: 18px; font-weight: bold; }
+    .btn-review { background: #00b894; font-weight: bold; }
     .btn-back { background: #747d8c; margin-top: 15px; }
     .btn-move { background: #e17055; font-weight: bold; line-height: 1.5; }
     .btn-move:active { background: #c0392b; }
+    .btn-move:disabled { cursor: default; }
     .btn-move small { font-weight: normal; }
     .move-title { font-weight: bold; color: #d63031; margin: 10px 0 4px; }
     .btn-select { background: #ffa502; padding: 4px 8px; font-size: 11px; width: auto; margin: 2px 0; }
@@ -218,6 +221,42 @@
       font-size: 13px;
       color: #4a148c;
     }
+
+    /* 成績・復習 */
+    .stats-summary {
+      background: #eef2f5;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .stats-row {
+      text-align: left;
+      padding: 8px 6px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .stats-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+    .stats-bar {
+      background: #e0e0e0;
+      border-radius: 6px;
+      height: 10px;
+      margin: 4px 0;
+      overflow: hidden;
+    }
+    .stats-fill { height: 100%; background: #1e90ff; }
+    .stats-fill-weak { background: #ff4757; }
+    .stats-fill-good { background: #2ed573; }
+    .review-feedback {
+      white-space: pre-line;
+      font-weight: bold;
+      margin: 10px 0;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -241,10 +280,11 @@
 
     <!-- メニュータブ -->
     <div class="nav-tabs">
-      <button class="nav-btn active" id="tab-stage" onclick="switchTab('stage')">⚔️ ステージ</button>
-      <button class="nav-btn" id="tab-dungeon" onclick="switchTab('dungeon')">🏰 ダンジョン</button>
-      <button class="nav-btn" id="tab-gacha" onclick="switchTab('gacha')">🎁 ガチャ</button>
-      <button class="nav-btn" id="tab-list" onclick="switchTab('list')">📜 所持</button>
+      <button class="nav-btn active" id="tab-stage" onclick="switchTab('stage')">⚔️<br>ステージ</button>
+      <button class="nav-btn" id="tab-dungeon" onclick="switchTab('dungeon')">🏰<br>ダンジョン</button>
+      <button class="nav-btn" id="tab-gacha" onclick="switchTab('gacha')">🎁<br>ガチャ</button>
+      <button class="nav-btn" id="tab-list" onclick="switchTab('list')">📜<br>所持</button>
+      <button class="nav-btn" id="tab-stats" onclick="switchTab('stats')">📊<br>成績</button>
     </div>
 
     <!-- 1. ステージ選択画面 -->
@@ -260,6 +300,7 @@
       <h3>🏰 難関大学ダンジョン</h3>
       <div class="dungeon-info">
         全階層を攻略してダンジョンをクリアしよう！<br>
+        階層をクリアするたびに、技の残り回数が少し回復するよ。<br>
         クリアで <b>ポイント ＋ 進化素材「E-キューブ」</b> を獲得！
       </div>
       <div id="dungeon-list"></div>
@@ -296,6 +337,7 @@
       <!-- 技を選ぶ -->
       <div id="move-select">
         <div class="move-title">⚡ 技を選ぼう！</div>
+        <div style="font-size:11px; color:#666; margin-bottom:4px;">技を使うと残り回数が1回減ります（不正解でも戻りません）</div>
         <div id="move-list"></div>
       </div>
 
@@ -324,6 +366,29 @@
       <div id="monster-list" class="monster-list"></div>
     </div>
 
+    <!-- 6. 成績画面 -->
+    <div id="stats-screen" class="hidden">
+      <h3>📊 成績</h3>
+      <div id="stats-summary" class="stats-summary"></div>
+      <div id="stats-list"></div>
+      <button class="btn btn-review" onclick="startReview()">🔁 苦手を復習する（全5問）</button>
+      <p style="font-size:11px; color:#666;">復習で正解するたびに 3pt もらえるよ！</p>
+    </div>
+
+    <!-- 7. 復習画面 -->
+    <div id="review-screen" class="hidden">
+      <h3>🔁 復習モード</h3>
+      <div id="review-progress" style="font-weight:bold; color:#8e44ad; margin-bottom:5px;"></div>
+      <div id="review-qarea">
+        <div id="review-topic" style="font-size:13px; font-weight:bold; color:#d63031;"></div>
+        <h2 id="review-question">問題: </h2>
+        <div id="review-options"></div>
+      </div>
+      <div id="review-feedback" class="review-feedback"></div>
+      <button id="review-next" class="btn hidden" onclick="nextReview()">次の問題へ</button>
+      <button class="btn btn-back" onclick="endReview()">やめて戻る</button>
+    </div>
+
     <p id="message"></p>
 
     <!-- テスト用データリセットボタン -->
@@ -346,27 +411,27 @@
 
     // ガクモンマスターデータ
     // moves : このガクモンが使える技のID（下の moveData を参照）
+    //
+    // 【新しいガクモンを足すときの見本】
+    // "m9": { id: "m9", name: "名前", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "なし",
+    //         img: "./画像のファイル名.png",
+    //         moves: ["mv_expand", "mv_factor", "mv_quadVertex"] },
+    // ガチャで出したいときは、下の gachaPool にもIDを足す。
+    // 進化させたいときは、進化前に evolveTo と evolveReqCube を書く。
     const monsterData = {
-      "m1": { id: "m1", name: "ヒコッコ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png", moves: ["mv_expand", "mv_abs"] },
-      "m2": { id: "m2", name: "テクリン", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png", moves: ["mv_linearIneq", "mv_data"] },
-      "m3": { id: "m3", name: "パピラス", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/4.png", moves: ["mv_abs", "mv_combi"] },
-      "m4": { id: "m4", name: "イグニスドラコ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png", moves: ["mv_expand", "mv_factor", "mv_quadVertex"] },
-      "m5": { id: "m5", name: "ボルトロボ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png", moves: ["mv_linearIneq", "mv_discriminant", "mv_trig"] },
-      "m6": { id: "m6", name: "ソルフェニックス", rarity: "SR", stage: 1, baseHp: 200, baseAtk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png", moves: ["mv_factor", "mv_quadVertex", "mv_prob", "mv_trig"] },
-
       // --- エンピツン進化ライン ---
       "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_1393.jpeg", moves: ["mv_expand", "mv_factor"], evolveTo: "m7_2", evolveReqCube: 1 },
       "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_1394.jpeg", moves: ["mv_expand", "mv_factor", "mv_quadVertex"], evolveTo: "m7_3", evolveReqCube: 2 },
-      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1395.png", moves: ["mv_expand", "mv_factor", "mv_quadVertex", "mv_discriminant"] },
+      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1395.png", moves: ["mv_expand", "mv_factor", "mv_quadVertex", "mv_discriminant", "mv_trig"] },
 
       // --- パピワン進化ライン ---
       "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_1411.png", moves: ["mv_linearIneq", "mv_abs"], evolveTo: "m8_2", evolveReqCube: 1 },
       "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_1412.png", moves: ["mv_linearIneq", "mv_abs", "mv_combi"], evolveTo: "m8_3", evolveReqCube: 2 },
-      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1413.png", moves: ["mv_linearIneq", "mv_abs", "mv_combi", "mv_prob"] }
+      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1413.png", moves: ["mv_linearIneq", "mv_abs", "mv_combi", "mv_prob", "mv_data"] }
     };
 
     // ガチャ用ベースプールID（進化前ガクモンのみ出現）
-    const gachaPool = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
+    const gachaPool = ["m7", "m8"];
 
     // =====================================================
     // 問題モジュール
@@ -770,29 +835,338 @@
     //   name    : 技の名前（自由に変えてOK）
     //   topicId : 出題される単元（topicData のID）
     //   power   : 威力の倍率。ダメージ = ガクモンの攻撃力 × power
+    //   uses    : 1回のバトル（ダンジョンは1回の挑戦）で使える回数
     // ガクモンがどの技を使えるかは、monsterData の moves に技IDを並べて決める。
     // =====================================================
     const moveData = {
-      mv_expand:       { id: "mv_expand",       name: "てんかいアタック",     topicId: "expand",       power: 1.0 },
-      mv_linearIneq:   { id: "mv_linearIneq",   name: "ふとうごうビーム",     topicId: "linearIneq",   power: 1.0 },
-      mv_abs:          { id: "mv_abs",          name: "アブソルートパンチ",   topicId: "abs",          power: 1.0 },
-      mv_factor:       { id: "mv_factor",       name: "ファクターブレイク",   topicId: "factor",       power: 1.3 },
-      mv_quadVertex:   { id: "mv_quadVertex",   name: "ちょうてんダイブ",     topicId: "quadVertex",   power: 1.3 },
-      mv_discriminant: { id: "mv_discriminant", name: "はんべつしきスパーク", topicId: "discriminant", power: 1.3 },
-      mv_data:         { id: "mv_data",         name: "データストーム",       topicId: "data",         power: 1.3 },
-      mv_trig:         { id: "mv_trig",         name: "サインコサインざん",   topicId: "trig",         power: 1.6 },
-      mv_combi:        { id: "mv_combi",        name: "くみあわせラッシュ",   topicId: "combi",        power: 1.6 },
-      mv_prob:         { id: "mv_prob",         name: "かくりつルーレット",   topicId: "prob",         power: 1.6 }
+      mv_expand:       { id: "mv_expand",       name: "てんかいアタック",     topicId: "expand",       power: 1.0, uses: 5 },
+      mv_linearIneq:   { id: "mv_linearIneq",   name: "ふとうごうビーム",     topicId: "linearIneq",   power: 1.0, uses: 5 },
+      mv_abs:          { id: "mv_abs",          name: "アブソルートパンチ",   topicId: "abs",          power: 1.0, uses: 5 },
+      mv_factor:       { id: "mv_factor",       name: "ファクターブレイク",   topicId: "factor",       power: 1.3, uses: 4 },
+      mv_quadVertex:   { id: "mv_quadVertex",   name: "ちょうてんダイブ",     topicId: "quadVertex",   power: 1.3, uses: 4 },
+      mv_discriminant: { id: "mv_discriminant", name: "はんべつしきスパーク", topicId: "discriminant", power: 1.3, uses: 4 },
+      mv_data:         { id: "mv_data",         name: "データストーム",       topicId: "data",         power: 1.3, uses: 4 },
+      mv_trig:         { id: "mv_trig",         name: "サインコサインざん",   topicId: "trig",         power: 1.6, uses: 3 },
+      mv_combi:        { id: "mv_combi",        name: "くみあわせラッシュ",   topicId: "combi",        power: 1.6, uses: 3 },
+      mv_prob:         { id: "mv_prob",         name: "かくりつルーレット",   topicId: "prob",         power: 1.6, uses: 3 }
     };
 
     // パートナーがいないときに使える技
     const DEFAULT_MOVES = ["mv_expand", "mv_linearIneq"];
+
+    // すべての技の回数が0になったときだけ使える最後の手段（回数の制限なし）
+    // topicId が null のときは、覚えている技の単元からランダムに出題する
+    const FALLBACK_MOVE = { id: "mv_tackle", name: "ひっしのたいあたり", topicId: null, power: 0.6, uses: null };
+
+    // ダンジョンで階層をクリアしたとき、各技が回復する回数
+    const DUNGEON_RECOVER = 1;
 
     // いまのパートナーが使える技の一覧を返す
     function getPartnerMoves() {
       const p = monsterData[partnerId];
       const ids = (p && p.moves && p.moves.length) ? p.moves : DEFAULT_MOVES;
       return ids.map(id => moveData[id]).filter(Boolean);
+    }
+
+    // ===== 画像の代わり（パートナーがいないとき用の仮の画像） =====
+    const PLACEHOLDER_IMG = "data:image/svg+xml;utf8," + encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><rect width='90' height='90' rx='10' fill='#dfe4ea'/><text x='45' y='62' font-size='48' text-anchor='middle' fill='#747d8c'>?</text></svg>"
+    );
+
+    // =====================================================
+    // 成績の記録
+    // 単元ごとに、正解数・不正解数・直近の結果を記録して、localStorage に保存する。
+    //   topicStats = { 単元ID: { c: 正解の累計, w: 不正解の累計, recent: [1,0,1,...] } }
+    // 「直近」は最新 RECENT_MAX 回分。苦手・得意の判定は、この直近の正答率で行う。
+    // =====================================================
+    const STATS_KEY = "gakumon_stats";
+    const RECENT_MAX = 10;
+    let topicStats = {};
+
+    function loadStats() {
+      try { topicStats = JSON.parse(localStorage.getItem(STATS_KEY)) || {}; } catch (e) { topicStats = {}; }
+    }
+    function saveStats() {
+      localStorage.setItem(STATS_KEY, JSON.stringify(topicStats));
+    }
+
+    // 1回の回答を記録する
+    function recordAnswer(topicId, isCorrect) {
+      const s = topicStats[topicId] || (topicStats[topicId] = { c: 0, w: 0, recent: [] });
+      if (isCorrect) s.c++; else s.w++;
+      s.recent.push(isCorrect ? 1 : 0);
+      if (s.recent.length > RECENT_MAX) s.recent.shift();
+      saveStats();
+    }
+
+    // 直近の正答率（0〜1）。記録がなければ null
+    function topicAccuracy(topicId) {
+      const s = topicStats[topicId];
+      if (!s || s.recent.length === 0) return null;
+      return s.recent.reduce((a, b) => a + b, 0) / s.recent.length;
+    }
+
+    // 単元の状態： "none"（未挑戦） / "few"（記録少なめ） / "weak"（苦手） / "normal" / "good"（得意）
+    function topicLevel(topicId) {
+      const s = topicStats[topicId];
+      if (!s || s.recent.length === 0) return "none";
+      if (s.recent.length < 3) return "few";
+      const acc = topicAccuracy(topicId);
+      if (acc < 0.6) return "weak";
+      if (acc >= 0.8) return "good";
+      return "normal";
+    }
+
+    // 成績画面を描く
+    function renderStats() {
+      const STATS_LABEL = { none: "－ 未挑戦", few: "記録少なめ", weak: "😣 苦手", normal: "🙂 ふつう", good: "😊 得意" };
+      const ids = Object.keys(topicData);
+
+      let totalC = 0, totalW = 0;
+      ids.forEach(id => { const s = topicStats[id]; if (s) { totalC += s.c; totalW += s.w; } });
+      const total = totalC + totalW;
+      document.getElementById("stats-summary").innerText = total === 0
+        ? "まだ記録がありません。バトルや復習で問題を解くと、ここに成績がたまります！"
+        : `これまでの成績：${totalC} / ${total} 問正解（${Math.round(totalC / total * 100)}%）`;
+
+      // 正答率が低い順（未挑戦は最後）
+      const sorted = ids.slice().sort((a, b) => {
+        const x = topicAccuracy(a), y = topicAccuracy(b);
+        if (x === null && y === null) return 0;
+        if (x === null) return 1;
+        if (y === null) return -1;
+        return x - y;
+      });
+
+      const list = document.getElementById("stats-list");
+      list.innerHTML = "";
+      sorted.forEach(id => {
+        const t = topicData[id], s = topicStats[id], lv = topicLevel(id);
+        const recent = s ? s.recent : [];
+        const ok = recent.reduce((a, b) => a + b, 0);
+        const pct = recent.length ? Math.round(ok / recent.length * 100) : 0;
+        const row = document.createElement("div");
+        row.className = "stats-row";
+        row.innerHTML = `
+          <div class="stats-head"><b>${t.name}</b><span>${STATS_LABEL[lv]}</span></div>
+          <div class="stats-bar"><div class="stats-fill stats-fill-${lv}" style="width:${pct}%"></div></div>
+          <small>直近 ${ok}/${recent.length}回 ／ 累計 ${s ? s.c : 0}/${s ? s.c + s.w : 0}問</small>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    // =====================================================
+    // 復習モード
+    // 直近の正答率が低い単元（最大3つ）から REVIEW_COUNT 問を出す。
+    // HPやダメージはなし。正解するたびに REVIEW_REWARD pt もらえる。
+    // 答えるたびに成績にも記録される。
+    // =====================================================
+    const REVIEW_COUNT = 5;   // 1回の復習の問題数
+    const REVIEW_REWARD = 3;  // 1問正解ごとのポイント
+    const REVIEW_DIFF = 2;    // 復習の問題の難しさ
+    let reviewState = null;   // { index, correct, gained, topics, quiz, answered, finished }
+
+    // 復習で出す単元を決める（記録がなければ全単元）
+    function pickReviewTopics() {
+      const ids = Object.keys(topicData);
+      const tried = ids.filter(id => topicAccuracy(id) !== null);
+      if (tried.length === 0) return ids;
+      tried.sort((a, b) => {
+        const d = topicAccuracy(a) - topicAccuracy(b);
+        if (d !== 0) return d;
+        return topicStats[b].w - topicStats[a].w; // 同じ正答率なら、間違いが多いほうを先に
+      });
+      return tried.slice(0, 3);
+    }
+
+    function startReview() {
+      reviewState = { index: 0, correct: 0, gained: 0, topics: pickReviewTopics(), quiz: null, answered: false, finished: false };
+      ["stats-screen", "stage-select-screen", "dungeon-select-screen", "battle-screen", "gacha-screen", "list-screen"]
+        .forEach(id => document.getElementById(id).classList.add("hidden"));
+      document.getElementById("review-screen").classList.remove("hidden");
+      document.getElementById("message").innerText = "";
+      showReviewQuestion();
+    }
+
+    function showReviewQuestion() {
+      const rs = reviewState;
+      if (!rs) return;
+      rs.quiz = getQuestion({ topics: rs.topics, diff: REVIEW_DIFF });
+      rs.answered = false;
+
+      document.getElementById("review-qarea").classList.remove("hidden");
+      document.getElementById("review-progress").innerText = `第 ${rs.index + 1} / ${REVIEW_COUNT} 問`;
+      document.getElementById("review-topic").innerText = `【${rs.quiz.topicName}】`;
+      document.getElementById("review-question").innerText = "問題: " + rs.quiz.q;
+      document.getElementById("review-feedback").innerText = "";
+      document.getElementById("review-next").classList.add("hidden");
+
+      const box = document.getElementById("review-options");
+      box.innerHTML = "";
+      [...rs.quiz.options].sort(() => Math.random() - 0.5).forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.innerText = opt;
+        btn.onclick = () => answerReview(opt);
+        box.appendChild(btn);
+      });
+    }
+
+    function answerReview(selected) {
+      const rs = reviewState;
+      if (!rs || rs.answered || rs.finished) return; // 回答済みの連打を無視
+      rs.answered = true;
+
+      const ok = judgeAnswer(rs.quiz, selected);
+      recordAnswer(rs.quiz.topicId, ok);
+      const fb = document.getElementById("review-feedback");
+      if (ok) {
+        rs.correct++;
+        rs.gained += REVIEW_REWARD;
+        userPoints += REVIEW_REWARD;
+        saveData();
+        updateUI();
+        fb.style.color = "green";
+        fb.innerText = `✨ 正解！ +${REVIEW_REWARD}pt\n${rs.quiz.explain}`;
+      } else {
+        fb.style.color = "red";
+        fb.innerText = `❌ 不正解… 正解：${rs.quiz.answer}\n${rs.quiz.explain}`;
+      }
+
+      const next = document.getElementById("review-next");
+      next.innerText = (rs.index + 1 >= REVIEW_COUNT) ? "結果を見る" : "次の問題へ";
+      next.classList.remove("hidden");
+    }
+
+    function nextReview() {
+      const rs = reviewState;
+      if (!rs) return;
+      if (rs.finished) { endReview(); return; }
+      if (!rs.answered) return;
+      rs.index++;
+      if (rs.index >= REVIEW_COUNT) {
+        rs.finished = true;
+        document.getElementById("review-qarea").classList.add("hidden");
+        document.getElementById("review-progress").innerText = "復習おわり！";
+        const fb = document.getElementById("review-feedback");
+        fb.style.color = "purple";
+        fb.innerText = `🎉 ${REVIEW_COUNT}問中 ${rs.correct}問 正解！\nもらったポイント：${rs.gained}pt`;
+        const next = document.getElementById("review-next");
+        next.innerText = "成績に戻る";
+        next.classList.remove("hidden");
+      } else {
+        showReviewQuestion();
+      }
+    }
+
+    function endReview() {
+      reviewState = null;
+      switchTab('stats');
+    }
+
+    // =====================================================
+    // 画面（タブ）の切り替え
+    // =====================================================
+    const SCREEN_OF_TAB = {
+      stage: "stage-select-screen",
+      dungeon: "dungeon-select-screen",
+      gacha: "gacha-screen",
+      list: "list-screen",
+      stats: "stats-screen"
+    };
+    function switchTab(tabName) {
+      reviewState = null; // 復習の途中でタブを切り替えたら、復習は終了
+      ["stage-select-screen", "dungeon-select-screen", "battle-screen", "gacha-screen", "list-screen", "stats-screen", "review-screen"]
+        .forEach(id => document.getElementById(id).classList.add("hidden"));
+      Object.keys(SCREEN_OF_TAB).forEach(t => document.getElementById("tab-" + t).classList.remove("active"));
+      document.getElementById("message").innerText = "";
+
+      const sid = SCREEN_OF_TAB[tabName];
+      if (!sid) return;
+      document.getElementById(sid).classList.remove("hidden");
+      document.getElementById("tab-" + tabName).classList.add("active");
+      if (tabName === "stats") renderStats();
+    }
+
+    // =====================================================
+    // セーブデータの整理・ガチャ
+    // =====================================================
+    // 削除されたガクモンのデータを取り除く
+    function sanitizeOwnedData() {
+      Object.keys(ownedMonsters).forEach(id => { if (!monsterData[id]) delete ownedMonsters[id]; });
+      if (partnerId && (!monsterData[partnerId] || !ownedMonsters[partnerId])) partnerId = null;
+      const keys = Object.keys(ownedMonsters);
+      if (!partnerId && keys.length > 0) partnerId = keys[0];
+    }
+
+    // 出したいレアリティのガクモンがいなければ、近いレアリティから選ぶ
+    function pickGachaMonster(targetRarity) {
+      const order = ["SR", "R", "N"];
+      const start = order.indexOf(targetRarity);
+      const tryOrder = order.slice(start).concat(order.slice(0, start).reverse());
+      for (const r of tryOrder) {
+        const pool = gachaPool.map(id => monsterData[id]).filter(m => m && m.rarity === r);
+        if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+      }
+      return null;
+    }
+
+    // ガチャ実行
+    function drawGacha() {
+      const msg = document.getElementById("message");
+      const resultDiv = document.getElementById("gacha-result");
+
+      if (userPoints < 100) {
+        msg.style.color = "red";
+        msg.innerText = "❌ ポイントが足りません！(100pt必要です)";
+        resultDiv.classList.add("hidden");
+        return;
+      }
+
+      const rand = Math.random() * 100;
+      let targetRarity = "N";
+      if (rand < 10) {
+        targetRarity = "SR";
+      } else if (rand < 40) {
+        targetRarity = "R";
+      }
+
+      const drawnMonster = pickGachaMonster(targetRarity);
+      if (!drawnMonster) {
+        msg.style.color = "red";
+        msg.innerText = "❌ いまのところ、ガチャで出せるガクモンがいません。";
+        resultDiv.classList.add("hidden");
+        return;
+      }
+
+      userPoints -= 100;
+
+      // 進化ラインのどれかを持っていれば「所持済み」。新規追加せず、ポイントを戻す
+      const isDuplicate = ownsLine(drawnMonster.id);
+      let refund = 0;
+      if (isDuplicate) {
+        refund = duplicateRefund[drawnMonster.rarity] || 0;
+        userPoints += refund;
+      } else {
+        ownedMonsters[drawnMonster.id] = { level: 1 };
+      }
+
+      if (!partnerId) partnerId = drawnMonster.id;
+
+      saveData();
+      updateUI();
+
+      const stats = getMonsterStats(drawnMonster.id) || drawnMonster;
+
+      msg.innerText = "";
+      resultDiv.classList.remove("hidden");
+      resultDiv.innerHTML = `
+        🎉 ガチャ結果 🎉<br>
+        <img class="gacha-img aura-${stats.rarity}" src="${stats.img}"><br>
+        <span class="rarity-${stats.rarity}">[${stats.rarity}] ${stats.name}</span>
+        ${isDuplicate ? `は、すでに持っているよ！<br>🎓 ${refund}pt が戻ってきた！` : "を手に入れた！"}
+      `;
     }
 
     // =====================================================
@@ -867,6 +1241,19 @@
       });
     }
 
+    // 技の残り使用回数  { 技ID: 残り回数 }
+    let moveUses = {};
+    function resetMoveUses() {
+      moveUses = {};
+      getPartnerMoves().forEach(m => { moveUses[m.id] = m.uses; });
+    }
+    function recoverMoveUses(n) {
+      getPartnerMoves().forEach(m => { moveUses[m.id] = Math.min(m.uses, (moveUses[m.id] || 0) + n); });
+    }
+    function allMovesEmpty() {
+      return getPartnerMoves().every(m => !(moveUses[m.id] > 0));
+    }
+
     // バトル・ダンジョン用変数
     let currentStage = "";
     let isDungeonMode = false;
@@ -911,11 +1298,12 @@
       }
 
       partnerId = localStorage.getItem("gakumon_partner");
-      const keys = Object.keys(ownedMonsters);
-      if (!partnerId && keys.length > 0) {
-        partnerId = keys[0];
-      }
 
+      // 削除されたガクモンのデータを整理して、保存し直す
+      sanitizeOwnedData();
+      saveData();
+
+      loadStats();
       updateUI();
     }
 
@@ -924,6 +1312,7 @@
       localStorage.setItem("gakumon_cubes", userCubes);
       localStorage.setItem("gakumon_owned_dict", JSON.stringify(ownedMonsters));
       if (partnerId) localStorage.setItem("gakumon_partner", partnerId);
+      else localStorage.removeItem("gakumon_partner");
     }
 
     // ガクモンの現在の計算後ステータスを取得
@@ -970,36 +1359,6 @@
       document.getElementById("player-hp-fill").style.width = Math.max(0, (playerHP / playerMaxHP) * 100) + "%";
 
       renderMonsterList();
-    }
-
-    // タブ切り替え
-    function switchTab(tabName) {
-      document.getElementById("stage-select-screen").classList.add("hidden");
-      document.getElementById("dungeon-select-screen").classList.add("hidden");
-      document.getElementById("battle-screen").classList.add("hidden");
-      document.getElementById("gacha-screen").classList.add("hidden");
-      document.getElementById("list-screen").classList.add("hidden");
-
-      document.getElementById("tab-stage").classList.remove("active");
-      document.getElementById("tab-dungeon").classList.remove("active");
-      document.getElementById("tab-gacha").classList.remove("active");
-      document.getElementById("tab-list").classList.remove("active");
-
-      document.getElementById("message").innerText = "";
-
-      if (tabName === 'stage') {
-        document.getElementById("stage-select-screen").classList.remove("hidden");
-        document.getElementById("tab-stage").classList.add("active");
-      } else if (tabName === 'dungeon') {
-        document.getElementById("dungeon-select-screen").classList.remove("hidden");
-        document.getElementById("tab-dungeon").classList.add("active");
-      } else if (tabName === 'gacha') {
-        document.getElementById("gacha-screen").classList.remove("hidden");
-        document.getElementById("tab-gacha").classList.add("active");
-      } else if (tabName === 'list') {
-        document.getElementById("list-screen").classList.remove("hidden");
-        document.getElementById("tab-list").classList.add("active");
-      }
     }
 
     // パートナー変更
@@ -1163,9 +1522,11 @@
         playerHP = 100;
         playerMaxHP = 100;
         playerATK = 50;
-        playerImg.src = "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/0.png";
+        playerImg.src = PLACEHOLDER_IMG;
         playerImg.className = "fighter-img aura-N";
       }
+
+      resetMoveUses(); // 技の使用回数を全回復
     }
 
     // 技を選ぶ画面を表示する
@@ -1177,23 +1538,48 @@
       const box = document.getElementById("move-list");
       box.innerHTML = "";
       getPartnerMoves().forEach(m => {
+        const left = moveUses[m.id];
         const btn = document.createElement("button");
         btn.className = "btn btn-move";
-        btn.innerHTML = `${m.name}<br><small>【${topicData[m.topicId].name}】 威力 ×${m.power}</small>`;
-        btn.onclick = () => useMove(m.id);
+        const weak = topicLevel(m.topicId) === "weak" ? " 😣苦手" : "";
+        btn.innerHTML = `${m.name}<br><small>【${topicData[m.topicId].name}】${weak} 威力 ×${m.power} ／ 残り ${left}/${m.uses}回</small>`;
+        if (left > 0) {
+          btn.onclick = () => useMove(m.id);
+        } else {
+          btn.disabled = true;
+          btn.style.opacity = "0.4";
+        }
         box.appendChild(btn);
       });
+
+      // すべての技の回数がなくなったら、最後の手段を出す
+      if (allMovesEmpty()) {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-move";
+        btn.innerHTML = `${FALLBACK_MOVE.name}<br><small>威力 ×${FALLBACK_MOVE.power} ／ 回数の制限なし（覚えている技の単元から出題）</small>`;
+        btn.onclick = () => useMove(FALLBACK_MOVE.id);
+        box.appendChild(btn);
+      }
     }
 
     // 技を使う：その技の単元の問題を1問出す
     function useMove(moveId) {
       if (!battleActive || battlePhase !== "select") return;
-      const m = moveData[moveId];
+      const isFallback = (moveId === FALLBACK_MOVE.id);
+      const m = isFallback ? FALLBACK_MOVE : moveData[moveId];
       if (!m) return;
+
+      if (isFallback) {
+        if (!allMovesEmpty()) return; // 他の技が使えるうちは使えない
+      } else {
+        if (!(moveUses[m.id] > 0)) return; // 回数が残っていない
+        moveUses[m.id]--;                  // 技を選んだ時点で1回消費（不正解でも戻らない）
+      }
 
       currentMove = m;
       battlePhase = "answer";
-      currentQuiz = getQuestion({ topics: [m.topicId], diff: battleDiff });
+      const topics = m.topicId ? [m.topicId] : getPartnerMoves().map(x => x.topicId);
+      currentQuiz = getQuestion({ topics: topics, diff: battleDiff });
 
       document.getElementById("move-select").classList.add("hidden");
       document.getElementById("question-area").classList.remove("hidden");
@@ -1222,7 +1608,10 @@
       const partner = getMonsterStats(partnerId);
       const moveName = currentMove.name;
 
-      if (judgeAnswer(currentQuiz, selected)) {
+      const isCorrect = judgeAnswer(currentQuiz, selected);
+      recordAnswer(currentQuiz.topicId, isCorrect); // 成績に記録
+
+      if (isCorrect) {
         let damage = Math.round(playerATK * currentMove.power);
         let isCritical = false;
 
@@ -1255,7 +1644,8 @@
               // 階層が進んだので、その階層の敵に切り替える
               setEnemy(currentDungeon.enemies[(dungeonStep - 1) % currentDungeon.enemies.length]);
               document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
-              message.innerText = `✨ 敵を撃破！第 ${dungeonStep} 階層に進みます！`;
+              recoverMoveUses(DUNGEON_RECOVER);
+              message.innerText = `✨ 敵を撃破！第 ${dungeonStep} 階層に進みます！\n（各技の残り回数が${DUNGEON_RECOVER}回ずつ回復！）`;
               showMoveSelect();
             }
           } else {
@@ -1292,58 +1682,6 @@
     function showStageSelect() {
       battleActive = false;
       switchTab('stage');
-    }
-
-    // ガチャ実行
-    function drawGacha() {
-      const msg = document.getElementById("message");
-      const resultDiv = document.getElementById("gacha-result");
-
-      if (userPoints < 100) {
-        msg.style.color = "red";
-        msg.innerText = "❌ ポイントが足りません！(100pt必要です)";
-        resultDiv.classList.add("hidden");
-        return;
-      }
-
-      userPoints -= 100;
-
-      const rand = Math.random() * 100;
-      let targetRarity = "N";
-      if (rand < 10) {
-        targetRarity = "SR";
-      } else if (rand < 40) {
-        targetRarity = "R";
-      }
-
-      const pool = gachaPool.map(id => monsterData[id]).filter(m => m.rarity === targetRarity);
-      const drawnMonster = pool[Math.floor(Math.random() * pool.length)];
-
-      // 進化ラインのどれかを持っていれば「所持済み」。新規追加せず、ポイントを戻す
-      const isDuplicate = ownsLine(drawnMonster.id);
-      let refund = 0;
-      if (isDuplicate) {
-        refund = duplicateRefund[drawnMonster.rarity] || 0;
-        userPoints += refund;
-      } else {
-        ownedMonsters[drawnMonster.id] = { level: 1 };
-      }
-
-      if (!partnerId) partnerId = drawnMonster.id;
-
-      saveData();
-      updateUI();
-
-      const stats = getMonsterStats(drawnMonster.id) || drawnMonster;
-
-      msg.innerText = "";
-      resultDiv.classList.remove("hidden");
-      resultDiv.innerHTML = `
-        🎉 ガチャ結果 🎉<br>
-        <img class="gacha-img aura-${stats.rarity}" src="${stats.img}"><br>
-        <span class="rarity-${stats.rarity}">[${stats.rarity}] ${stats.name}</span>
-        ${isDuplicate ? `は、すでに持っているよ！<br>🎓 ${refund}pt が戻ってきた！` : "を手に入れた！"}
-      `;
     }
 
     // 所持リスト描画（レベルアップ・進化ボタン配置）
@@ -1409,10 +1747,12 @@
         localStorage.removeItem("gakumon_monsters");
         localStorage.removeItem("gakumon_owned_dict");
         localStorage.removeItem("gakumon_partner");
+        localStorage.removeItem(STATS_KEY);
         userPoints = 0;
         userCubes = 0;
         ownedMonsters = {};
         partnerId = null;
+        topicStats = {};
         showStageSelect();
         updateUI();
         document.getElementById("message").innerText = "データをリセットしました。";
