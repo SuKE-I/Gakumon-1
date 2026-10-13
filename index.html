@@ -107,6 +107,10 @@
     .btn-dungeon { background: #8e44ad; font-weight: bold; }
     .btn-gacha { background: #9b59b6; font-size: 18px; font-weight: bold; }
     .btn-back { background: #747d8c; margin-top: 15px; }
+    .btn-move { background: #e17055; font-weight: bold; line-height: 1.5; }
+    .btn-move:active { background: #c0392b; }
+    .btn-move small { font-weight: normal; }
+    .move-title { font-weight: bold; color: #d63031; margin: 10px 0 4px; }
     .btn-select { background: #ffa502; padding: 4px 8px; font-size: 11px; width: auto; margin: 2px 0; }
     .btn-lvup { background: #2ed573; padding: 4px 8px; font-size: 11px; width: auto; margin: 2px 0; }
     .btn-evolve { background: #e056fd; padding: 4px 8px; font-size: 11px; width: auto; margin: 2px 0; font-weight: bold; color: white; }
@@ -246,16 +250,16 @@
     <!-- 1. ステージ選択画面 -->
     <div id="stage-select-screen">
       <h3>挑戦するステージを選ぼう！</h3>
-      <button class="btn btn-easy" onclick="startStage('easy')">🌱 初級 (展開・不等式・絶対値) [+10pt]</button>
-      <button class="btn btn-medium" onclick="startStage('medium')">🔥 中級 (因数分解・二次関数・判別式) [+30pt]</button>
-      <button class="btn btn-hard" onclick="startStage('hard')">👑 上級 (三角比・場合の数・確率・データ) [+50pt]</button>
+      <button class="btn btn-easy" onclick="startStage('easy')">🌱 初級 (やさしい問題) [+10pt]</button>
+      <button class="btn btn-medium" onclick="startStage('medium')">🔥 中級 (ふつうの問題) [+30pt]</button>
+      <button class="btn btn-hard" onclick="startStage('hard')">👑 上級 (むずかしい問題) [+50pt]</button>
     </div>
 
     <!-- 2. ダンジョン選択画面（ボタンは dungeonData から自動で作られる） -->
     <div id="dungeon-select-screen" class="hidden">
       <h3>🏰 難関大学ダンジョン</h3>
       <div class="dungeon-info">
-        全問正解してダンジョンを完全攻略しよう！<br>
+        全階層を攻略してダンジョンをクリアしよう！<br>
         クリアで <b>ポイント ＋ 進化素材「E-キューブ」</b> を獲得！
       </div>
       <div id="dungeon-list"></div>
@@ -289,9 +293,18 @@
 
       <hr>
 
-      <div id="topic-label" style="font-size:13px; font-weight:bold; color:#8e44ad;"></div>
-      <h2 id="question">問題: </h2>
-      <div id="options"></div>
+      <!-- 技を選ぶ -->
+      <div id="move-select">
+        <div class="move-title">⚡ 技を選ぼう！</div>
+        <div id="move-list"></div>
+      </div>
+
+      <!-- 問題に答える -->
+      <div id="question-area" class="hidden">
+        <div id="topic-label" style="font-size:13px; font-weight:bold; color:#d63031;"></div>
+        <h2 id="question">問題: </h2>
+        <div id="options"></div>
+      </div>
 
       <button class="btn btn-back" onclick="showStageSelect()">あきらめて戻る</button>
     </div>
@@ -331,24 +344,25 @@
     // 進化段階ごとのレベル上限
     const maxLevelCap = { 1: 30, 2: 50, 3: 100 };
 
-    // ガクモンマスターデータ（エンピツン全3形態＆イヌ系全3形態を追加）
+    // ガクモンマスターデータ
+    // moves : このガクモンが使える技のID（下の moveData を参照）
     const monsterData = {
-      "m1": { id: "m1", name: "ヒコッコ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png" },
-      "m2": { id: "m2", name: "テクリン", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png" },
-      "m3": { id: "m3", name: "パピラス", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/4.png" },
-      "m4": { id: "m4", name: "イグニスドラコ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png" },
-      "m5": { id: "m5", name: "ボルトロボ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png" },
-      "m6": { id: "m6", name: "ソルフェニックス", rarity: "SR", stage: 1, baseHp: 200, baseAtk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png" },
+      "m1": { id: "m1", name: "ヒコッコ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1.png", moves: ["mv_expand", "mv_abs"] },
+      "m2": { id: "m2", name: "テクリン", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/7.png", moves: ["mv_linearIneq", "mv_data"] },
+      "m3": { id: "m3", name: "パピラス", rarity: "N", stage: 1, baseHp: 100, baseAtk: 50, ability: "なし", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/4.png", moves: ["mv_abs", "mv_combi"] },
+      "m4": { id: "m4", name: "イグニスドラコ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/5.png", moves: ["mv_expand", "mv_factor", "mv_quadVertex"] },
+      "m5": { id: "m5", name: "ボルトロボ", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "HP・攻撃アップ", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/25.png", moves: ["mv_linearIneq", "mv_discriminant", "mv_trig"] },
+      "m6": { id: "m6", name: "ソルフェニックス", rarity: "SR", stage: 1, baseHp: 200, baseAtk: 70, ability: "会心（一定確率で2倍ダメ）", img: "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/6.png", moves: ["mv_factor", "mv_quadVertex", "mv_prob", "mv_trig"] },
 
       // --- エンピツン進化ライン ---
-      "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_1393.jpeg", evolveTo: "m7_2", evolveReqCube: 1 },
-      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_1394.jpeg", evolveTo: "m7_3", evolveReqCube: 2 },
-      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1395.png" },
+      "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_1393.jpeg", moves: ["mv_expand", "mv_factor"], evolveTo: "m7_2", evolveReqCube: 1 },
+      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_1394.jpeg", moves: ["mv_expand", "mv_factor", "mv_quadVertex"], evolveTo: "m7_3", evolveReqCube: 2 },
+      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1395.png", moves: ["mv_expand", "mv_factor", "mv_quadVertex", "mv_discriminant"] },
 
       // --- パピワン進化ライン ---
-      "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_1411.png", evolveTo: "m8_2", evolveReqCube: 1 },
-      "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_1412.png", evolveTo: "m8_3", evolveReqCube: 2 },
-      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1413.png" }
+      "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_1411.png", moves: ["mv_linearIneq", "mv_abs"], evolveTo: "m8_2", evolveReqCube: 1 },
+      "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_1412.png", moves: ["mv_linearIneq", "mv_abs", "mv_combi"], evolveTo: "m8_3", evolveReqCube: 2 },
+      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1413.png", moves: ["mv_linearIneq", "mv_abs", "mv_combi", "mv_prob"] }
     };
 
     // ガチャ用ベースプールID（進化前ガクモンのみ出現）
@@ -722,17 +736,17 @@
     };
     const MATH_TOPICS = Object.keys(topicData).filter(id => topicData[id].subject === "math");
 
-    // 通常ステージで出す単元と難しさ
+    // 通常ステージの問題の難しさ（出る単元は、使う技で決まる）
     const stageConfig = {
-      easy:   { topics: ["expand", "linearIneq", "abs"], diff: 1 },
-      medium: { topics: ["factor", "quadVertex", "discriminant"], diff: 2 },
-      hard:   { topics: ["trig", "combi", "prob", "data"], diff: 3 }
+      easy:   { diff: 1 },
+      medium: { diff: 2 },
+      hard:   { diff: 3 }
     };
 
     // 問題を1問取り出す
     // source: { topics: ["expand", "factor"], diff: 2 }
-    //   topics の中からランダムに1単元を選んで出題する（直前と同じ単元は避ける）。
-    //   将来の「技」は、topics に技の単元を1つだけ入れて呼べばよい。
+    //   topics の中からランダムに1単元を選んで出題する。
+    //   技を使うときは、topics にその技の単元を1つだけ入れて呼ぶ。
     // 戻り値: { q, options, answer, explain, topicId, topicName }
     let lastTopicId = null;
     function getQuestion(source) {
@@ -748,6 +762,37 @@
     // 正解かどうかを判定する
     function judgeAnswer(question, selected) {
       return selected === question.answer;
+    }
+
+    // =====================================================
+    // 技データ
+    // 技は「どの単元の問題に答えるか」と「威力」を持つ。
+    //   name    : 技の名前（自由に変えてOK）
+    //   topicId : 出題される単元（topicData のID）
+    //   power   : 威力の倍率。ダメージ = ガクモンの攻撃力 × power
+    // ガクモンがどの技を使えるかは、monsterData の moves に技IDを並べて決める。
+    // =====================================================
+    const moveData = {
+      mv_expand:       { id: "mv_expand",       name: "てんかいアタック",     topicId: "expand",       power: 1.0 },
+      mv_linearIneq:   { id: "mv_linearIneq",   name: "ふとうごうビーム",     topicId: "linearIneq",   power: 1.0 },
+      mv_abs:          { id: "mv_abs",          name: "アブソルートパンチ",   topicId: "abs",          power: 1.0 },
+      mv_factor:       { id: "mv_factor",       name: "ファクターブレイク",   topicId: "factor",       power: 1.3 },
+      mv_quadVertex:   { id: "mv_quadVertex",   name: "ちょうてんダイブ",     topicId: "quadVertex",   power: 1.3 },
+      mv_discriminant: { id: "mv_discriminant", name: "はんべつしきスパーク", topicId: "discriminant", power: 1.3 },
+      mv_data:         { id: "mv_data",         name: "データストーム",       topicId: "data",         power: 1.3 },
+      mv_trig:         { id: "mv_trig",         name: "サインコサインざん",   topicId: "trig",         power: 1.6 },
+      mv_combi:        { id: "mv_combi",        name: "くみあわせラッシュ",   topicId: "combi",        power: 1.6 },
+      mv_prob:         { id: "mv_prob",         name: "かくりつルーレット",   topicId: "prob",         power: 1.6 }
+    };
+
+    // パートナーがいないときに使える技
+    const DEFAULT_MOVES = ["mv_expand", "mv_linearIneq"];
+
+    // いまのパートナーが使える技の一覧を返す
+    function getPartnerMoves() {
+      const p = monsterData[partnerId];
+      const ids = (p && p.moves && p.moves.length) ? p.moves : DEFAULT_MOVES;
+      return ids.map(id => moveData[id]).filter(Boolean);
     }
 
     // =====================================================
@@ -775,7 +820,6 @@
     //   reward      : クリア報酬のポイント
     //   cubes       : クリア報酬のE-キューブの数
     //   enemies     : 階層ごとに出る敵のID（この数が階層数になる）
-    //   topics      : 出題する単元のID（MATH_TOPICS は数学の全単元）
     //   diff        : 問題の難しさ（1〜4）
     //   baseHp      : 第1階層の敵のHP
     //   hpPerStep   : 第2階層以降、階層ごとに増えるHP
@@ -785,7 +829,7 @@
     //   name: "京都大学ダンジョン", icon: "🏯",
     //   reward: 300, cubes: 1,
     //   enemies: ["e1", "e1", "e1", "e1", "e1"],
-    //   topics: MATH_TOPICS, diff: 4,
+    //   diff: 4,
     //   baseHp: 120, hpPerStep: 10
     // }
     // =====================================================
@@ -794,7 +838,7 @@
         name: "東京大学ダンジョン", icon: "🎓",
         reward: 300, cubes: 1,
         enemies: ["e1", "e1", "e1", "e1", "e1"],
-        topics: MATH_TOPICS, diff: 4,
+        diff: 4,
         baseHp: 120, hpPerStep: 10
       }
     };
@@ -817,7 +861,7 @@
         const d = dungeonData[id];
         const btn = document.createElement("button");
         btn.className = "btn btn-dungeon";
-        btn.innerText = `${d.icon} ${d.name} (全${d.enemies.length}問) [+${d.reward}pt / 🧊${d.cubes}個]`;
+        btn.innerText = `${d.icon} ${d.name} (全${d.enemies.length}階層) [+${d.reward}pt / 🧊${d.cubes}個]`;
         btn.onclick = () => startDungeon(id);
         box.appendChild(btn);
       });
@@ -836,7 +880,10 @@
     let playerMaxHP = 100;
     let playerATK = 50;
     let currentQuiz = null;
-    let battleActive = false; // 戦闘中のみ回答を受け付ける（クリア後の連打対策）
+    let currentMove = null;     // 今回使った技
+    let battleDiff = 1;         // 今回の問題の難しさ
+    let battlePhase = "select"; // "select"（技を選ぶ）/ "answer"（問題に答える）
+    let battleActive = false;   // 戦闘中のみ回答を受け付ける（クリア後の連打対策）
 
     // ロード
     window.onload = function() {
@@ -1036,6 +1083,7 @@
       isDungeonMode = false;
       currentDungeon = null;
       currentStage = difficulty;
+      battleDiff = stageConfig[difficulty].diff;
       enemyHP = 100;
       enemyMaxHP = 100;
       document.getElementById("dungeon-progress").innerText = "";
@@ -1063,7 +1111,7 @@
       document.getElementById("stage-select-screen").classList.add("hidden");
       document.getElementById("battle-screen").classList.remove("hidden");
 
-      nextQuestion();
+      showMoveSelect();
       updateUI();
     }
 
@@ -1074,6 +1122,7 @@
 
       isDungeonMode = true;
       currentDungeon = d;
+      battleDiff = d.diff;
       dungeonStep = 1;
       dungeonTotalSteps = d.enemies.length;
       stageReward = d.reward;
@@ -1092,12 +1141,14 @@
       document.getElementById("dungeon-select-screen").classList.add("hidden");
       document.getElementById("battle-screen").classList.remove("hidden");
 
-      nextQuestion();
+      showMoveSelect();
       updateUI();
     }
 
     function initBattleStatus() {
       battleActive = true; // 戦闘開始：回答を受け付ける
+      battlePhase = "select";
+      currentMove = null;
 
       const partner = getMonsterStats(partnerId);
       const playerImg = document.getElementById("player-battle-img");
@@ -1117,14 +1168,38 @@
       }
     }
 
-    // 次の問題（問題モジュールから1問もらって画面に表示する）
-    function nextQuestion() {
-      const conf = isDungeonMode ? currentDungeon : stageConfig[currentStage];
-      currentQuiz = getQuestion({ topics: conf.topics, diff: conf.diff });
+    // 技を選ぶ画面を表示する
+    function showMoveSelect() {
+      battlePhase = "select";
+      document.getElementById("question-area").classList.add("hidden");
+      document.getElementById("move-select").classList.remove("hidden");
 
-      document.getElementById("topic-label").innerText = `【${currentQuiz.topicName}】`;
+      const box = document.getElementById("move-list");
+      box.innerHTML = "";
+      getPartnerMoves().forEach(m => {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-move";
+        btn.innerHTML = `${m.name}<br><small>【${topicData[m.topicId].name}】 威力 ×${m.power}</small>`;
+        btn.onclick = () => useMove(m.id);
+        box.appendChild(btn);
+      });
+    }
+
+    // 技を使う：その技の単元の問題を1問出す
+    function useMove(moveId) {
+      if (!battleActive || battlePhase !== "select") return;
+      const m = moveData[moveId];
+      if (!m) return;
+
+      currentMove = m;
+      battlePhase = "answer";
+      currentQuiz = getQuestion({ topics: [m.topicId], diff: battleDiff });
+
+      document.getElementById("move-select").classList.add("hidden");
+      document.getElementById("question-area").classList.remove("hidden");
+      document.getElementById("topic-label").innerText = `⚡ ${m.name}【${currentQuiz.topicName}】`;
       document.getElementById("question").innerText = "問題: " + currentQuiz.q;
-      
+
       const optionsDiv = document.getElementById("options");
       optionsDiv.innerHTML = "";
 
@@ -1140,13 +1215,15 @@
 
     // 回答チェック
     function checkAnswer(selected) {
-      if (!battleActive) return; // 終了後の連打を無視
+      if (!battleActive || battlePhase !== "answer") return; // 終了後・回答済みの連打を無視
+      battlePhase = "select";
 
       const message = document.getElementById("message");
       const partner = getMonsterStats(partnerId);
+      const moveName = currentMove.name;
 
       if (judgeAnswer(currentQuiz, selected)) {
-        let damage = playerATK;
+        let damage = Math.round(playerATK * currentMove.power);
         let isCritical = false;
 
         if (partner && partner.rarity === "SR" && Math.random() < 0.3) {
@@ -1156,11 +1233,11 @@
 
         enemyHP -= damage;
         if (enemyHP < 0) enemyHP = 0;
-        
+
         message.style.color = "green";
-        message.innerText = isCritical 
-          ? `💥 会心の一撃！ モンスターに${damage}ダメージ！` 
-          : `✨ 正解！ モンスターに${damage}ダメージ！`;
+        message.innerText = isCritical
+          ? `💥 会心の一撃！ ${moveName}で敵に${damage}ダメージ！`
+          : `✨ ${moveName}が命中！ 敵に${damage}ダメージ！`;
 
         if (enemyHP === 0) {
           if (isDungeonMode) {
@@ -1179,7 +1256,7 @@
               setEnemy(currentDungeon.enemies[(dungeonStep - 1) % currentDungeon.enemies.length]);
               document.getElementById("dungeon-progress").innerText = `第 ${dungeonStep} / ${dungeonTotalSteps} 階層`;
               message.innerText = `✨ 敵を撃破！第 ${dungeonStep} 階層に進みます！`;
-              nextQuestion();
+              showMoveSelect();
             }
           } else {
             battleActive = false; // クリア確定：以降の入力を無効化
@@ -1189,7 +1266,7 @@
             setTimeout(() => { showStageSelect(); }, 2000);
           }
         } else {
-          nextQuestion();
+          showMoveSelect();
         }
       } else {
         playerHP -= 30;
@@ -1198,14 +1275,14 @@
         // 不正解のときは、正しい答えと解き方を表示する
         const correctInfo = `\n正解：${currentQuiz.answer}\n${currentQuiz.explain}`;
         message.style.color = "red";
-        message.innerText = "❌ 不正解！ 30のダメージを受けた！" + correctInfo;
+        message.innerText = `❌ 不正解！ ${moveName}は外れた… 30のダメージを受けた！` + correctInfo;
 
         if (playerHP === 0) {
           battleActive = false; // 敗北確定：以降の入力を無効化
           message.innerText = "💀 HPが0になった... 攻略失敗！" + correctInfo;
           setTimeout(() => { showStageSelect(); }, 4000);
         } else {
-          nextQuestion();
+          showMoveSelect();
         }
       }
 
@@ -1292,6 +1369,7 @@
           
           const cost = rarityCost[stats.rarity] || 10;
           const cap = maxLevelCap[stats.stage] || 30;
+          const moveNames = (stats.moves || []).map(mid => moveData[mid] ? moveData[mid].name : mid).join("・");
 
           // 進化可能か判定
           let evolveBtnHtml = "";
@@ -1308,7 +1386,8 @@
               <div>
                 <span class="rarity-${stats.rarity}">[${stats.rarity}]</span> <b>${stats.name}</b><br>
                 <small style="color:#333;"><b>Lv.${stats.level}</b> (上限:${cap})</small><br>
-                <small style="color:#666;">HP:${stats.hp} / 攻:${stats.atk}</small>
+                <small style="color:#666;">HP:${stats.hp} / 攻:${stats.atk}</small><br>
+                <small style="color:#d63031;">技：${moveNames}</small>
               </div>
             </div>
             <div class="monster-item-actions">
