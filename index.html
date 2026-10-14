@@ -149,6 +149,12 @@
       border-radius: 10px;
       background: #fff;
     }
+    .enemy-weak {
+      font-size: 11px;
+      font-weight: bold;
+      color: #d63031;
+      min-height: 14px;
+    }
 
     /* レアリティ別のオーラ（CSS効果） */
     .aura-SR {
@@ -326,6 +332,7 @@
         <!-- 敵（右） -->
         <div class="fighter-box">
           <div id="enemy-name" style="font-size:12px; font-weight:bold;">👾 敵</div>
+          <div id="enemy-weak" class="enemy-weak"></div>
           <img id="enemy-battle-img" class="fighter-img aura-N" src="./IMG_1414.png" alt="敵">
           <div style="font-size:11px;">HP: <span id="enemy-hp-text">100</span></div>
           <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill-enemy"></div></div>
@@ -1171,13 +1178,19 @@
 
     // =====================================================
     // 敵データ
-    // name は画面に表示される名前。自由に書き換えてOK。
-    // aura は枠の見た目（N / R / SR）。
+    //   name     : 画面に表示される名前（自由に書き換えてOK）
+    //   img      : 画像のファイル名
+    //   aura     : 枠の見た目（N / R / SR）
+    //   weakness : 弱点の単元ID（topicData のID）。書かなければ弱点なし。
+    //              弱点の単元の問題に正解すると、ダメージが WEAKNESS_MULT 倍になる。
     // 敵を増やすときは、ここに1行足して、下の
     // stageEnemies / dungeonData の enemies にIDを追加する。
+    //
+    // 【追加の見本】
+    // "e2": { id: "e2", name: "名前", img: "./画像のファイル名.png", aura: "N", weakness: "prob" },
     // =====================================================
     const enemyData = {
-      "e1": { id: "e1", name: "サボスラ", img: "./IMG_1414.png", aura: "N" }
+      "e1": { id: "e1", name: "サボスラ", img: "./IMG_1414.png", aura: "N", weakness: "linearIneq" }
     };
 
     // ステージごとに出る敵（複数あればランダム）
@@ -1217,14 +1230,27 @@
       }
     };
 
-    // 敵の名前・画像・枠を切り替える
+    // 敵の弱点の単元の問題に正解したとき、ダメージが何倍になるか
+    const WEAKNESS_MULT = 1.5;
+
+    // いま戦っている敵
+    let currentEnemyId = null;
+    function currentEnemyWeakness() {
+      const e = enemyData[currentEnemyId];
+      return e && e.weakness ? e.weakness : null;
+    }
+
+    // 敵の名前・画像・枠・弱点を切り替える
     function setEnemy(id) {
       const e = enemyData[id];
       if (!e) return;
+      currentEnemyId = id;
       document.getElementById("enemy-name").innerText = "👾 " + e.name;
       const img = document.getElementById("enemy-battle-img");
       img.src = e.img;
       img.className = `fighter-img aura-${e.aura || "N"}`;
+      const weakEl = document.getElementById("enemy-weak");
+      weakEl.innerText = (e.weakness && topicData[e.weakness]) ? `🎯 弱点：${topicData[e.weakness].name}` : "";
     }
 
     // ダンジョン選択画面のボタンを dungeonData から作る
@@ -1537,12 +1563,14 @@
 
       const box = document.getElementById("move-list");
       box.innerHTML = "";
+      const enemyWeak = currentEnemyWeakness();
       getPartnerMoves().forEach(m => {
         const left = moveUses[m.id];
         const btn = document.createElement("button");
         btn.className = "btn btn-move";
         const weak = topicLevel(m.topicId) === "weak" ? " 😣苦手" : "";
-        btn.innerHTML = `${m.name}<br><small>【${topicData[m.topicId].name}】${weak} 威力 ×${m.power} ／ 残り ${left}/${m.uses}回</small>`;
+        const hitWeak = (enemyWeak && m.topicId === enemyWeak) ? " 🎯弱点" : "";
+        btn.innerHTML = `${m.name}<br><small>【${topicData[m.topicId].name}】${hitWeak}${weak} 威力 ×${m.power} ／ 残り ${left}/${m.uses}回</small>`;
         if (left > 0) {
           btn.onclick = () => useMove(m.id);
         } else {
@@ -1613,8 +1641,13 @@
 
       if (isCorrect) {
         let damage = Math.round(playerATK * currentMove.power);
-        let isCritical = false;
 
+        // 敵の弱点の単元の問題に正解したら、ダメージが増える
+        const weakTopic = currentEnemyWeakness();
+        const isWeak = !!weakTopic && currentQuiz.topicId === weakTopic;
+        if (isWeak) damage = Math.round(damage * WEAKNESS_MULT);
+
+        let isCritical = false;
         if (partner && partner.rarity === "SR" && Math.random() < 0.3) {
           damage *= 2;
           isCritical = true;
@@ -1623,10 +1656,13 @@
         enemyHP -= damage;
         if (enemyHP < 0) enemyHP = 0;
 
+        let head = "✨";
+        if (isCritical && isWeak) head = "💥🎯 会心の一撃＆弱点！";
+        else if (isCritical) head = "💥 会心の一撃！";
+        else if (isWeak) head = "🎯 弱点を突いた！";
+
         message.style.color = "green";
-        message.innerText = isCritical
-          ? `💥 会心の一撃！ ${moveName}で敵に${damage}ダメージ！`
-          : `✨ ${moveName}が命中！ 敵に${damage}ダメージ！`;
+        message.innerText = `${head} ${moveName}が命中！ 敵に${damage}ダメージ！`;
 
         if (enemyHP === 0) {
           if (isDungeonMode) {
