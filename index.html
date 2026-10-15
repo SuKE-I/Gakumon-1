@@ -124,6 +124,11 @@
       padding: 6px;
       margin-top: 20px;
     }
+    .version {
+      font-size: 11px;
+      color: #999;
+      margin: 12px 0 0;
+    }
     #message {
       font-weight: bold;
       margin-top: 15px;
@@ -400,9 +405,15 @@
 
     <!-- テスト用データリセットボタン -->
     <button class="btn reset-btn" onclick="resetData()">セーブデータを初期化</button>
+
+    <!-- バージョン表示（更新できたかの確認用） -->
+    <p id="version" class="version"></p>
   </div>
 
   <script>
+    // バージョン（コードを更新したら、ここを書き換えると、画面の下の表示が変わる）
+    const GAME_VERSION = "2026.10.15-A（敵と京都大学ダンジョン追加）";
+
     // プレイヤーデータ
     let userPoints = 0;
     let userCubes = 0;
@@ -1187,17 +1198,19 @@
     // stageEnemies / dungeonData の enemies にIDを追加する。
     //
     // 【追加の見本】
-    // "e2": { id: "e2", name: "名前", img: "./画像のファイル名.png", aura: "N", weakness: "prob" },
+    // "e4": { id: "e4", name: "名前", img: "./画像のファイル名.png", aura: "N", weakness: "prob" },
     // =====================================================
     const enemyData = {
-      "e1": { id: "e1", name: "サボスラ", img: "./IMG_1414.png", aura: "N", weakness: "linearIneq" }
+      "e1": { id: "e1", name: "サボスラ",     img: "./IMG_1414.png",  aura: "N",  weakness: "linearIneq" },
+      "e2": { id: "e2", name: "ヨフカバット", img: "./IMG_0018.webp", aura: "R",  weakness: "factor" },
+      "e3": { id: "e3", name: "ダラニャン",   img: "./IMG_0019.webp", aura: "SR", weakness: "prob" }
     };
 
     // ステージごとに出る敵（複数あればランダム）
     const stageEnemies = {
       easy: ["e1"],
       medium: ["e1"],
-      hard: ["e1"]
+      hard: ["e2"]
     };
 
     // =====================================================
@@ -1210,23 +1223,21 @@
     //   diff        : 問題の難しさ（1〜4）
     //   baseHp      : 第1階層の敵のHP
     //   hpPerStep   : 第2階層以降、階層ごとに増えるHP
-    //
-    // 【追加の見本】
-    // kyoto: {
-    //   name: "京都大学ダンジョン", icon: "🏯",
-    //   reward: 300, cubes: 1,
-    //   enemies: ["e1", "e1", "e1", "e1", "e1"],
-    //   diff: 4,
-    //   baseHp: 120, hpPerStep: 10
-    // }
     // =====================================================
     const dungeonData = {
       tokyo: {
         name: "東京大学ダンジョン", icon: "🎓",
         reward: 300, cubes: 1,
-        enemies: ["e1", "e1", "e1", "e1", "e1"],
+        enemies: ["e1", "e1", "e1", "e1", "e3"],
         diff: 4,
         baseHp: 120, hpPerStep: 10
+      },
+      kyoto: {
+        name: "京都大学ダンジョン", icon: "🏯",
+        reward: 400, cubes: 1,
+        enemies: ["e1", "e2", "e1", "e2", "e1", "e2"],
+        diff: 4,
+        baseHp: 130, hpPerStep: 12
       }
     };
 
@@ -1300,6 +1311,7 @@
 
     // ロード
     window.onload = function() {
+      document.getElementById("version").innerText = "バージョン：" + GAME_VERSION;
       renderDungeonList();
       loadData();
     };
