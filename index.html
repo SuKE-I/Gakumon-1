@@ -412,7 +412,7 @@
 
   <script>
     // バージョン（コードを更新したら、ここを書き換えると、画面の下の表示が変わる）
-    const GAME_VERSION = "2026.10.15-A（敵と京都大学ダンジョン追加）";
+    const GAME_VERSION = "2026.10.16-A（新ガクモン2系統・画像更新）";
 
     // プレイヤーデータ
     let userPoints = 0;
@@ -431,25 +431,37 @@
     // moves : このガクモンが使える技のID（下の moveData を参照）
     //
     // 【新しいガクモンを足すときの見本】
-    // "m9": { id: "m9", name: "名前", rarity: "R", stage: 1, baseHp: 150, baseAtk: 60, ability: "なし",
-    //         img: "./画像のファイル名.png",
-    //         moves: ["mv_expand", "mv_factor", "mv_quadVertex"] },
-    // ガチャで出したいときは、下の gachaPool にもIDを足す。
-    // 進化させたいときは、進化前に evolveTo と evolveReqCube を書く。
+    // "m11": { id: "m11", name: "名前", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし",
+    //          img: "./画像のファイル名.webp",
+    //          moves: ["mv_expand", "mv_factor"],
+    //          evolveTo: "m11_2", evolveReqCube: 1 },
+    // ガチャで出したいときは、下の gachaPool に進化前のIDを足す。
+    // 進化は「進化前のガクモン」に evolveTo と evolveReqCube を書いて、進化後も別のIDで登録する。
+    // 進化後（stage 2, 3）は、前の形態の技を引き継ぐように moves を並べると分かりやすい。
     const monsterData = {
       // --- エンピツン進化ライン ---
-      "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_1393.jpeg", moves: ["mv_expand", "mv_factor"], evolveTo: "m7_2", evolveReqCube: 1 },
-      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_1394.jpeg", moves: ["mv_expand", "mv_factor", "mv_quadVertex"], evolveTo: "m7_3", evolveReqCube: 2 },
-      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1395.png", moves: ["mv_expand", "mv_factor", "mv_quadVertex", "mv_discriminant", "mv_trig"] },
+      "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_0001.webp", moves: ["mv_expand", "mv_factor"], evolveTo: "m7_2", evolveReqCube: 1 },
+      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_0002.webp", moves: ["mv_expand", "mv_factor", "mv_quadVertex"], evolveTo: "m7_3", evolveReqCube: 2 },
+      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0003.webp", moves: ["mv_expand", "mv_factor", "mv_quadVertex", "mv_discriminant", "mv_trig"] },
 
       // --- パピワン進化ライン ---
-      "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_1411.png", moves: ["mv_linearIneq", "mv_abs"], evolveTo: "m8_2", evolveReqCube: 1 },
-      "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_1412.png", moves: ["mv_linearIneq", "mv_abs", "mv_combi"], evolveTo: "m8_3", evolveReqCube: 2 },
-      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_1413.png", moves: ["mv_linearIneq", "mv_abs", "mv_combi", "mv_prob", "mv_data"] }
+      "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_0004.webp", moves: ["mv_linearIneq", "mv_abs"], evolveTo: "m8_2", evolveReqCube: 1 },
+      "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_0005.webp", moves: ["mv_linearIneq", "mv_abs", "mv_combi"], evolveTo: "m8_3", evolveReqCube: 2 },
+      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0006.webp", moves: ["mv_linearIneq", "mv_abs", "mv_combi", "mv_prob", "mv_data"] },
+
+      // --- フクロウ進化ライン（高い攻撃力、低めのHP） ---
+      "m9": { id: "m9", name: "モコロウ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 60, ability: "なし", img: "./IMG_0007.webp", moves: ["mv_expand", "mv_data"], evolveTo: "m9_2", evolveReqCube: 1 },
+      "m9_2": { id: "m9_2", name: "ブックロウ", rarity: "R", stage: 2, baseHp: 165, baseAtk: 90, ability: "なし", img: "./IMG_0008.webp", moves: ["mv_expand", "mv_data", "mv_prob"], evolveTo: "m9_3", evolveReqCube: 2 },
+      "m9_3": { id: "m9_3", name: "サイエンロウ", rarity: "SR", stage: 3, baseHp: 225, baseAtk: 125, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0009.webp", moves: ["mv_expand", "mv_data", "mv_prob", "mv_trig", "mv_discriminant"] },
+
+      // --- カメ進化ライン（高いHP、低めの攻撃力） ---
+      "m10": { id: "m10", name: "チズガメ", rarity: "N", stage: 1, baseHp: 125, baseAtk: 48, ability: "なし", img: "./IMG_0010.webp", moves: ["mv_abs", "mv_quadVertex"], evolveTo: "m10_2", evolveReqCube: 1 },
+      "m10_2": { id: "m10_2", name: "ガクシガメ", rarity: "R", stage: 2, baseHp: 200, baseAtk: 72, ability: "なし", img: "./IMG_0011.webp", moves: ["mv_abs", "mv_quadVertex", "mv_combi"], evolveTo: "m10_3", evolveReqCube: 2 },
+      "m10_3": { id: "m10_3", name: "ガクチョウガメ", rarity: "SR", stage: 3, baseHp: 280, baseAtk: 100, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0012.webp", moves: ["mv_abs", "mv_quadVertex", "mv_combi", "mv_linearIneq", "mv_factor"] }
     };
 
     // ガチャ用ベースプールID（進化前ガクモンのみ出現）
-    const gachaPool = ["m7", "m8"];
+    const gachaPool = ["m7", "m8", "m9", "m10"];
 
     // =====================================================
     // 問題モジュール
