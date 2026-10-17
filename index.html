@@ -154,6 +154,11 @@
       border-radius: 10px;
       background: #fff;
     }
+    .enemy-type {
+      font-size: 11px;
+      font-weight: bold;
+      color: #8e44ad;
+    }
     .enemy-weak {
       font-size: 11px;
       font-weight: bold;
@@ -268,6 +273,16 @@
       margin: 10px 0;
       font-size: 14px;
     }
+    details {
+      text-align: left;
+      margin-top: 12px;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      padding: 6px 0;
+    }
   </style>
 </head>
 <body>
@@ -337,6 +352,7 @@
         <!-- 敵（右） -->
         <div class="fighter-box">
           <div id="enemy-name" style="font-size:12px; font-weight:bold;">👾 敵</div>
+          <div id="enemy-type" class="enemy-type"></div>
           <div id="enemy-weak" class="enemy-weak"></div>
           <img id="enemy-battle-img" class="fighter-img aura-N" src="./IMG_1414.png" alt="敵">
           <div style="font-size:11px;">HP: <span id="enemy-hp-text">100</span></div>
@@ -385,6 +401,10 @@
       <div id="stats-list"></div>
       <button class="btn btn-review" onclick="startReview()">🔁 苦手を復習する（全5問）</button>
       <p style="font-size:11px; color:#666;">復習で正解するたびに 3pt もらえるよ！</p>
+      <details>
+        <summary>📖 タイプ相性表（◎抜群 ×1.5 ／ △いまひとつ ×0.75）</summary>
+        <div id="type-chart"></div>
+      </details>
     </div>
 
     <!-- 7. 復習画面 -->
@@ -412,7 +432,7 @@
 
   <script>
     // バージョン（コードを更新したら、ここを書き換えると、画面の下の表示が変わる）
-    const GAME_VERSION = "2026.10.16-A（新ガクモン2系統・画像更新）";
+    const GAME_VERSION = "2026.10.16-B（12教科とタイプ相性）";
 
     // プレイヤーデータ
     let userPoints = 0;
@@ -439,25 +459,25 @@
     // 進化は「進化前のガクモン」に evolveTo と evolveReqCube を書いて、進化後も別のIDで登録する。
     // 進化後（stage 2, 3）は、前の形態の技を引き継ぐように moves を並べると分かりやすい。
     const monsterData = {
-      // --- エンピツン進化ライン ---
-      "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_0001.webp", moves: ["mv_expand", "mv_factor"], evolveTo: "m7_2", evolveReqCube: 1 },
-      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_0002.webp", moves: ["mv_expand", "mv_factor", "mv_quadVertex"], evolveTo: "m7_3", evolveReqCube: 2 },
-      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0003.webp", moves: ["mv_expand", "mv_factor", "mv_quadVertex", "mv_discriminant", "mv_trig"] },
+      // --- エンピツン進化ライン（国語＋数学Ⅰの式） ---
+      "m7": { id: "m7", name: "エンピツン", rarity: "N", stage: 1, baseHp: 110, baseAtk: 55, ability: "なし", img: "./IMG_0001.webp", moves: ["mv_kanji", "mv_expand"], evolveTo: "m7_2", evolveReqCube: 1 },
+      "m7_2": { id: "m7_2", name: "シャープン", rarity: "R", stage: 2, baseHp: 180, baseAtk: 80, ability: "なし", img: "./IMG_0002.webp", moves: ["mv_kanji", "mv_expand", "mv_factor"], evolveTo: "m7_3", evolveReqCube: 2 },
+      "m7_3": { id: "m7_3", name: "ペンブレイバー", rarity: "SR", stage: 3, baseHp: 250, baseAtk: 110, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0003.webp", moves: ["mv_kanji", "mv_expand", "mv_factor", "mv_lit", "mv_quadVertex"] },
 
-      // --- パピワン進化ライン ---
-      "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_0004.webp", moves: ["mv_linearIneq", "mv_abs"], evolveTo: "m8_2", evolveReqCube: 1 },
-      "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_0005.webp", moves: ["mv_linearIneq", "mv_abs", "mv_combi"], evolveTo: "m8_3", evolveReqCube: 2 },
-      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0006.webp", moves: ["mv_linearIneq", "mv_abs", "mv_combi", "mv_prob", "mv_data"] },
+      // --- パピワン進化ライン（英語＋数学A） ---
+      "m8": { id: "m8", name: "パピワン", rarity: "N", stage: 1, baseHp: 105, baseAtk: 58, ability: "なし", img: "./IMG_0004.webp", moves: ["mv_eng", "mv_linearIneq"], evolveTo: "m8_2", evolveReqCube: 1 },
+      "m8_2": { id: "m8_2", name: "コンパワン", rarity: "R", stage: 2, baseHp: 175, baseAtk: 82, ability: "なし", img: "./IMG_0005.webp", moves: ["mv_eng", "mv_linearIneq", "mv_logic"], evolveTo: "m8_3", evolveReqCube: 2 },
+      "m8_3": { id: "m8_3", name: "キャプテンワン", rarity: "SR", stage: 3, baseHp: 240, baseAtk: 115, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0006.webp", moves: ["mv_eng", "mv_linearIneq", "mv_logic", "mv_combi", "mv_prob"] },
 
-      // --- フクロウ進化ライン（高い攻撃力、低めのHP） ---
-      "m9": { id: "m9", name: "モコロウ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 60, ability: "なし", img: "./IMG_0007.webp", moves: ["mv_expand", "mv_data"], evolveTo: "m9_2", evolveReqCube: 1 },
-      "m9_2": { id: "m9_2", name: "ブックロウ", rarity: "R", stage: 2, baseHp: 165, baseAtk: 90, ability: "なし", img: "./IMG_0008.webp", moves: ["mv_expand", "mv_data", "mv_prob"], evolveTo: "m9_3", evolveReqCube: 2 },
-      "m9_3": { id: "m9_3", name: "サイエンロウ", rarity: "SR", stage: 3, baseHp: 225, baseAtk: 125, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0009.webp", moves: ["mv_expand", "mv_data", "mv_prob", "mv_trig", "mv_discriminant"] },
+      // --- フクロウ進化ライン（理科。高い攻撃力、低めのHP） ---
+      "m9": { id: "m9", name: "モコロウ", rarity: "N", stage: 1, baseHp: 100, baseAtk: 60, ability: "なし", img: "./IMG_0007.webp", moves: ["mv_sci", "mv_data"], evolveTo: "m9_2", evolveReqCube: 1 },
+      "m9_2": { id: "m9_2", name: "ブックロウ", rarity: "R", stage: 2, baseHp: 165, baseAtk: 90, ability: "なし", img: "./IMG_0008.webp", moves: ["mv_sci", "mv_data", "mv_discriminant"], evolveTo: "m9_3", evolveReqCube: 2 },
+      "m9_3": { id: "m9_3", name: "サイエンロウ", rarity: "SR", stage: 3, baseHp: 225, baseAtk: 125, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0009.webp", moves: ["mv_sci", "mv_data", "mv_discriminant", "mv_chem", "mv_trig"] },
 
-      // --- カメ進化ライン（高いHP、低めの攻撃力） ---
-      "m10": { id: "m10", name: "チズガメ", rarity: "N", stage: 1, baseHp: 125, baseAtk: 48, ability: "なし", img: "./IMG_0010.webp", moves: ["mv_abs", "mv_quadVertex"], evolveTo: "m10_2", evolveReqCube: 1 },
-      "m10_2": { id: "m10_2", name: "ガクシガメ", rarity: "R", stage: 2, baseHp: 200, baseAtk: 72, ability: "なし", img: "./IMG_0011.webp", moves: ["mv_abs", "mv_quadVertex", "mv_combi"], evolveTo: "m10_3", evolveReqCube: 2 },
-      "m10_3": { id: "m10_3", name: "ガクチョウガメ", rarity: "SR", stage: 3, baseHp: 280, baseAtk: 100, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0012.webp", moves: ["mv_abs", "mv_quadVertex", "mv_combi", "mv_linearIneq", "mv_factor"] }
+      // --- カメ進化ライン（社会・実践。高いHP、低めの攻撃力） ---
+      "m10": { id: "m10", name: "チズガメ", rarity: "N", stage: 1, baseHp: 125, baseAtk: 48, ability: "なし", img: "./IMG_0010.webp", moves: ["mv_abs", "mv_health"], evolveTo: "m10_2", evolveReqCube: 1 },
+      "m10_2": { id: "m10_2", name: "ガクシガメ", rarity: "R", stage: 2, baseHp: 200, baseAtk: 72, ability: "なし", img: "./IMG_0011.webp", moves: ["mv_abs", "mv_health", "mv_geo"], evolveTo: "m10_3", evolveReqCube: 2 },
+      "m10_3": { id: "m10_3", name: "ガクチョウガメ", rarity: "SR", stage: 3, baseHp: 280, baseAtk: 100, ability: "会心（一定確率で2倍ダメ）", img: "./IMG_0012.webp", moves: ["mv_abs", "mv_health", "mv_geo", "mv_info", "mv_hist"] }
     };
 
     // ガチャ用ベースプールID（進化前ガクモンのみ出現）
@@ -467,8 +487,8 @@
     // 問題モジュール
     // バトル側は getQuestion() で問題を1問受け取り、
     // judgeAnswer() で正解かどうかを判定するだけ。
-    // 問題は単元ごとの生成関数で、数字をランダムに変えて作る。
-    // 単元を増やすときは、gen○○ 関数を作って topicData に1行足す。
+    // 数学は、単元ごとの生成関数で数字をランダムに変えて作る。
+    // ほかの教科は、bankData（暗記系の問題集）から出す。
     // =====================================================
 
     // ===== ユーティリティ =====
@@ -529,7 +549,7 @@
       return { q: q, answer: String(answer), options: buildOptions(answer, wrongs, filler), explain: explain };
     }
 
-    // ===== 各単元の問題生成 =====
+    // ===== 各単元の問題生成（数学） =====
     // diff（難しさ）: 1=初級 2=中級 3=上級 4=ダンジョン
 
     // 展開
@@ -815,21 +835,265 @@
         `平均は ${m}。（各値−平均）² の合計は ${ss}、÷5 で ${fmtNum(v)}`);
     }
 
-    // ===== 単元の一覧 =====
-    // subject: 教科（将来、理科などを足すときは subject を変えて追加する）
-    const topicData = {
-      expand:       { id: "expand",       subject: "math", name: "展開",           gen: genExpand },
-      factor:       { id: "factor",       subject: "math", name: "因数分解",       gen: genFactor },
-      linearIneq:   { id: "linearIneq",   subject: "math", name: "一次不等式",     gen: genLinearIneq },
-      abs:          { id: "abs",          subject: "math", name: "絶対値",         gen: genAbs },
-      quadVertex:   { id: "quadVertex",   subject: "math", name: "二次関数の頂点", gen: genQuadVertex },
-      discriminant: { id: "discriminant", subject: "math", name: "判別式",         gen: genDiscriminant },
-      trig:         { id: "trig",         subject: "math", name: "三角比",         gen: genTrig },
-      combi:        { id: "combi",        subject: "math", name: "順列・組合せ",   gen: genCombi },
-      prob:         { id: "prob",         subject: "math", name: "確率",           gen: genProb },
-      data:         { id: "data",         subject: "math", name: "データの分析",   gen: genData }
+    // =====================================================
+    // 教科（タイプ）
+    // 教科＝ガクモンの技や敵の「タイプ」。全部で12教科。
+    //   name : 画面に出る名前　icon : アイコン
+    // =====================================================
+    const subjectData = {
+      lit:    { id: "lit",    name: "言語文化",       icon: "📜" },
+      kanji:  { id: "kanji",  name: "現代の国語",     icon: "✏️" },
+      math1:  { id: "math1",  name: "数学Ⅰ",          icon: "➗" },
+      mathA:  { id: "mathA",  name: "数学A",          icon: "🎲" },
+      eng:    { id: "eng",    name: "コミュ英Ⅰ",      icon: "🔤" },
+      logic:  { id: "logic",  name: "論理表現Ⅰ",      icon: "💬" },
+      chem:   { id: "chem",   name: "化学基礎",       icon: "🧪" },
+      sci:    { id: "sci",    name: "科学と人間生活", icon: "🔬" },
+      hist:   { id: "hist",   name: "歴史総合",       icon: "🏛️" },
+      geo:    { id: "geo",    name: "地理総合",       icon: "🌏" },
+      info:   { id: "info",   name: "情報Ⅰ",          icon: "💻" },
+      health: { id: "health", name: "保健",           icon: "🩺" }
     };
-    const MATH_TOPICS = Object.keys(topicData).filter(id => topicData[id].subject === "math");
+
+    // =====================================================
+    // タイプ相性
+    // TYPE_BEATS[A] に B が入っていれば、「Aの技は、Bタイプの敵に効果抜群」（×1.5）。
+    // 逆に、Bの技でAタイプの敵を攻撃すると「いまひとつ」（×0.75）。
+    // どの教科も、「抜群の相手が2つ・いまひとつの相手が2つ」になっている。
+    // =====================================================
+    const TYPE_BEATS = {
+      math1:  ["chem", "info"],    // 数学Ⅰ → 化学基礎（物質量の計算）・情報Ⅰ（アルゴリズムの土台）
+      mathA:  ["sci", "health"],   // 数学A → 科学と人間生活（確率で科学的に判断）・保健（リスクの読み取り）
+      chem:   ["hist", "health"],  // 化学基礎 → 歴史総合（火薬や肥料が歴史を動かした）・保健（薬や栄養）
+      sci:    ["geo", "info"],     // 科学と人間生活 → 地理総合（気象・エネルギー・環境）・情報Ⅰ（身近な科学技術）
+      hist:   ["lit", "logic"],    // 歴史総合 → 言語文化（時代背景が古典を読み解く）・論理表現Ⅰ（事実を根拠に論じる）
+      geo:    ["kanji", "eng"],    // 地理総合 → 現代の国語（地名の漢字）・コミュ英Ⅰ（世界を知れば英語が身近に）
+      lit:    ["mathA", "logic"],  // 言語文化 → 数学A（古文の識別＝場合分け）・論理表現Ⅰ（表現技法）
+      kanji:  ["math1", "eng"],    // 現代の国語 → 数学Ⅰ（読解力が文章題に効く）・コミュ英Ⅰ（母語の語彙力が土台）
+      eng:    ["math1", "chem"],   // コミュ英Ⅰ → 数学Ⅰ（数学用語は英語由来）・化学基礎（元素や化学用語）
+      logic:  ["mathA", "sci"],    // 論理表現Ⅰ → 数学A（筋道立てた場合分け）・科学と人間生活（科学的な説明）
+      info:   ["geo", "kanji"],    // 情報Ⅰ → 地理総合（GISでデータから地図を読む）・現代の国語（情報の整理と伝達）
+      health: ["hist", "lit"]      // 保健 → 歴史総合（感染症・公衆衛生が歴史を動かした）・言語文化（心の理解が読解を助ける）
+    };
+    const TYPE_ADV_MULT = 1.5;   // 効果抜群のときのダメージ倍率
+    const TYPE_DIS_MULT = 0.75;  // いまひとつのときのダメージ倍率
+
+    // 攻撃側の教科 → 敵の教科 のダメージ倍率（敵にタイプがなければ ×1）
+    function typeMultiplier(attackSubject, defendSubject) {
+      if (!attackSubject || !defendSubject) return 1;
+      if ((TYPE_BEATS[attackSubject] || []).includes(defendSubject)) return TYPE_ADV_MULT;
+      if ((TYPE_BEATS[defendSubject] || []).includes(attackSubject)) return TYPE_DIS_MULT;
+      return 1;
+    }
+
+    // =====================================================
+    // 暗記系の問題集
+    // 1問 = [問題, 正解, [間違いの選択肢3つ], 解説, レベル(1〜3)]
+    // レベルは、ステージの難しさ（diff）に合わせて出し分ける。
+    //   diff 1 → レベル1だけ　diff 2 → レベル1〜2　diff 3以上 → すべて
+    // 問題を足すときは、各教科の配列に1行足すだけ。
+    // =====================================================
+    const bankData = {
+      // ---- 言語文化 ----
+      lit: [
+        ["『源氏物語』の作者は？", "紫式部", ["清少納言", "和泉式部", "紀貫之"], "『源氏物語』は平安時代中期、紫式部による長編物語。", 1],
+        ["『枕草子』の作者は？", "清少納言", ["紫式部", "兼好法師", "鴨長明"], "『枕草子』は平安時代中期、清少納言による随筆。", 1],
+        ["『吾輩は猫である』の作者は？", "夏目漱石", ["森鷗外", "芥川龍之介", "太宰治"], "夏目漱石のデビュー作。『坊っちゃん』『こころ』も漱石の作品。", 1],
+        ["『羅生門』の作者は？", "芥川龍之介", ["夏目漱石", "太宰治", "川端康成"], "平安時代を舞台にした、芥川龍之介の短編小説。", 1],
+        ["『徒然草』の作者は？", "兼好法師", ["鴨長明", "松尾芭蕉", "清少納言"], "鎌倉時代末期の随筆。作者は兼好法師（吉田兼好）。", 2],
+        ["『奥の細道』の作者は？", "松尾芭蕉", ["与謝蕪村", "小林一茶", "近松門左衛門"], "江戸時代の俳人・松尾芭蕉による紀行文。", 2],
+        ["古文単語「をかし」の意味として最も適切なものは？", "趣がある・おもしろい", ["恐ろしい", "悲しい", "退屈だ"], "「をかし」は明るく知的な趣を表す。「あはれなり」はしみじみとした情趣。", 2],
+        ["『平家物語』は何というジャンルの作品？", "軍記物語", ["歌物語", "日記文学", "随筆"], "平家の栄華と滅亡を描いた軍記物語。冒頭は「祇園精舎の鐘の声」。", 2],
+        ["係り結びで、係助詞「こそ」があるとき、文末は何形になる？", "已然形", ["連体形", "終止形", "連用形"], "「ぞ・なむ・や・か」は連体形、「こそ」は已然形で結ぶ。", 3],
+        ["故事成語「矛盾」の出典は？", "韓非子", ["論語", "孟子", "史記"], "『韓非子』に、矛と盾を売る商人の話がある。", 3],
+        ["『土佐日記』の作者は？", "紀貫之", ["在原業平", "藤原道綱母", "菅原孝標女"], "男性の紀貫之が、女性のふりをして仮名で書いた日記。", 3],
+        ["故事成語「五十歩百歩」の出典は？", "孟子", ["荘子", "老子", "戦国策"], "『孟子』の、戦場で逃げた兵士のたとえ話から。", 3]
+      ],
+      // ---- 現代の国語（漢字） ----
+      kanji: [
+        ["「概念」の読みは？", "がいねん", ["がいねい", "かいねん", "がいてん"], "「概」は「ガイ」と読む。", 1],
+        ["「克服」の読みは？", "こくふく", ["かくふく", "こっぷく", "きょくふく"], "「克」は「コク」と読む。", 1],
+        ["「脅威」の読みは？", "きょうい", ["ほうい", "きょうえい", "きょうり"], "「脅」は「キョウ」、「威」は「イ」。", 1],
+        ["絵画を「カンショウ」する。漢字は？", "鑑賞", ["干渉", "感傷", "完勝"], "芸術作品を味わうのは「鑑賞」。", 1],
+        ["「曖昧」の読みは？", "あいまい", ["あいめい", "あいみ", "おうまい"], "「曖」は「アイ」、「昧」は「マイ」。", 2],
+        ["「憂鬱」の読みは？", "ゆううつ", ["ゆうゆう", "ゆうとう", "ゆうしつ"], "「憂」は「ユウ」、「鬱」は「ウツ」。", 2],
+        ["「促す」の読みは？", "うながす", ["うごかす", "そくす", "うきがす"], "訓読みは「うなが（す）」。", 2],
+        ["新しい法律で「キセイ」する。漢字は？", "規制", ["帰省", "既成", "寄生"], "ルールで制限するのは「規制」。", 2],
+        ["「払拭」の読みは？", "ふっしょく", ["ふつしき", "ほっしき", "ふっしき"], "「拭」は「ショク」と読む。「不安を払拭する」のように使う。", 3],
+        ["「逸脱」の読みは？", "いつだつ", ["いっだつ", "いつぜい", "いちだつ"], "「逸」は「イツ」、「脱」は「ダツ」。", 3],
+        ["「恣意的」の読みは？", "しいてき", ["じいてき", "さいいてき", "しげんてき"], "「恣」は「シ」と読む。", 3],
+        ["調査の「タイショウ」を絞る。漢字は？", "対象", ["対称", "対照", "大将"], "目標となるものは「対象」。「対称」は釣り合い、「対照」は比べること。", 3]
+      ],
+      // ---- コミュ英Ⅰ（英単語） ----
+      eng: [
+        ["achieve の意味は？", "達成する", ["失う", "禁じる", "忘れる"], "achievement（達成）も一緒に覚えよう。", 1],
+        ["ancient の意味は？", "古代の", ["現代の", "新鮮な", "巨大な"], "ancient history ＝ 古代史。", 1],
+        ["benefit の意味は？", "利益・恩恵", ["損害", "危険", "努力"], "benefit from ～ ＝ ～から利益を得る。", 1],
+        ["reduce の意味は？", "減らす", ["増やす", "作る", "守る"], "反対は increase（増やす）。", 1],
+        ["consider の意味は？", "よく考える・考慮する", ["後悔する", "賛成する", "否定する"], "consider ～ing ＝ ～しようかと考える。", 2],
+        ["describe の意味は？", "描写する・説明する", ["禁止する", "招待する", "修理する"], "description（描写）も一緒に覚えよう。", 2],
+        ["essential の意味は？", "不可欠な", ["表面的な", "偶然の", "不要な"], "essential to ～ ＝ ～に不可欠な。", 2],
+        ["flexible の意味は？", "柔軟な", ["頑固な", "危険な", "退屈な"], "flexibility（柔軟性）も一緒に覚えよう。", 2],
+        ["hesitate の意味は？", "ためらう", ["急ぐ", "認める", "祝う"], "Don't hesitate to ask. ＝ 遠慮なく聞いてね。", 3],
+        ["enormous の意味は？", "巨大な", ["ごくわずかな", "危険な", "古風な"], "huge や vast と近い意味。", 3],
+        ["generate の意味は？", "生み出す", ["破壊する", "隠す", "移動する"], "generate electricity ＝ 電気を生み出す（発電する）。", 3],
+        ["indicate の意味は？", "示す", ["否定する", "準備する", "許可する"], "indication（しるし・指示）も一緒に覚えよう。", 3]
+      ],
+      // ---- 論理表現Ⅰ（英熟語・つなぎの表現） ----
+      logic: [
+        ["take care of ～ の意味は？", "～の世話をする", ["～を取り上げる", "～に連れて行く", "～を気にかけない"], "look after ～ と同じ意味。", 1],
+        ["look forward to ～ の意味は？", "～を楽しみに待つ", ["～を見下ろす", "～に期待しない", "～を探す"], "to の後ろは名詞か ～ing。", 1],
+        ["give up の意味は？", "あきらめる", ["与える", "持ち上げる", "立ち上がる"], "Don't give up! ＝ あきらめないで！", 1],
+        ["for example の意味は？", "たとえば", ["その結果", "一方で", "さらに"], "具体例をあげるときの表現。", 1],
+        ["put off ～ の意味は？", "～を延期する", ["～を着る", "～を準備する", "～を提案する"], "postpone と同じ意味。", 2],
+        ["come up with ～ の意味は？", "～を思いつく", ["～に追いつく", "～を我慢する", "～に出会う"], "come up with an idea ＝ 考えを思いつく。", 2],
+        ["as a result の意味は？", "その結果", ["その代わりに", "一方で", "たとえば"], "結果を述べるときのつなぎの表現。", 2],
+        ["on the other hand の意味は？", "一方で", ["その結果", "さらに", "たとえば"], "対比を表すつなぎの表現。", 2],
+        ["run out of ～ の意味は？", "～を使い果たす", ["～から逃げ出す", "～を運営する", "～を追い出す"], "We ran out of time. ＝ 時間がなくなった。", 3],
+        ["in spite of ～ の意味は？", "～にもかかわらず", ["～のおかげで", "～の代わりに", "～に加えて"], "despite と同じ意味。", 3],
+        ["as well as ～ の意味は？", "～だけでなく…も", ["～の代わりに", "～にもかかわらず", "～ほど良くない"], "A as well as B ＝ B だけでなく A も。", 3],
+        ["result in ～ の意味は？", "（結果として）～を引き起こす", ["～から生じる", "～に反対する", "～を延期する"], "lead to ～ と近い意味。反対向きは result from ～（～から生じる）。", 3]
+      ],
+      // ---- 化学基礎 ----
+      chem: [
+        ["元素記号「Na」の元素は？", "ナトリウム", ["ニッケル", "窒素", "ネオン"], "Na はラテン語 natrium から。窒素は N、ネオンは Ne。", 1],
+        ["元素記号「Fe」の元素は？", "鉄", ["フッ素", "銅", "亜鉛"], "Fe はラテン語 ferrum から。フッ素は F、銅は Cu、亜鉛は Zn。", 1],
+        ["水の分子式は？", "H₂O", ["HO₂", "H₂O₂", "OH"], "H₂O₂ は過酸化水素。", 1],
+        ["原子番号は、原子核の中の何の数に等しい？", "陽子の数", ["中性子の数", "陽子と中性子の数の和", "電子殻の数"], "原子番号＝陽子の数。", 1],
+        ["周期表の17族の元素をまとめて何という？", "ハロゲン", ["アルカリ金属", "貴ガス（希ガス）", "アルカリ土類金属"], "17族：F, Cl, Br, I など。1族（H以外）がアルカリ金属、18族が貴ガス。", 2],
+        ["塩化ナトリウム NaCl のおもな化学結合は？", "イオン結合", ["共有結合", "金属結合", "水素結合"], "金属元素と非金属元素の結びつきはイオン結合。", 2],
+        ["質量数は、何の数の和？", "陽子の数と中性子の数", ["陽子の数と電子の数", "中性子の数と電子の数", "原子番号と電子の数"], "質量数＝陽子の数＋中性子の数。", 2],
+        ["水溶液が中性のとき、pH（25℃）はいくつ？", "7", ["0", "1", "14"], "pH7 が中性、7より小さいと酸性、大きいと塩基性。", 2],
+        ["水 H₂O 1 mol の質量は？（H=1, O=16）", "18 g", ["16 g", "17 g", "2 g"], "分子量 1×2＋16＝18 なので、1 mol で 18 g。", 3],
+        ["物質1 mol あたりに含まれる粒子の数（アボガドロ定数）は？", "約6.0×10²³個", ["約6.0×10¹⁹個", "約6.0×10²⁶個", "約1.0×10²³個"], "アボガドロ定数は約 6.0×10²³ /mol。", 3],
+        ["物質が電子を失う変化を何という？", "酸化", ["還元", "中和", "電離"], "電子を失う＝酸化、電子を受け取る＝還元。", 3],
+        ["標準状態（0℃, 1.013×10⁵ Pa）で、気体1 mol の体積は約？", "22.4 L", ["1.0 L", "11.2 L", "44.8 L"], "気体の種類によらず、標準状態では 1 mol ＝ 22.4 L。", 3]
+      ],
+      // ---- 科学と人間生活 ----
+      sci: [
+        ["鍋の水が下から温まって全体が温まるのは、おもにどの熱の伝わり方？", "対流", ["伝導", "放射", "蒸発"], "温められた水が上昇し、冷たい水が下降して全体が温まる。", 1],
+        ["LED を日本語で何という？", "発光ダイオード", ["蛍光灯", "白熱電球", "発電ダイオード"], "LED は Light Emitting Diode の略。", 1],
+        ["太陽光・風力・水力のようなエネルギーをまとめて何という？", "再生可能エネルギー", ["化石燃料", "核燃料", "二次電池"], "使っても枯渇せず、自然の中で繰り返し得られるエネルギー。", 1],
+        ["月が満ち欠けして見える理由は？", "太陽に照らされた部分の見え方が変わるから", ["地球の影に入るから", "月が出す光の量が変わるから", "雲が月を隠すから"], "地球の影に入るのは月食。満ち欠けは見える角度の変化。", 1],
+        ["ペットボトルの「PET」は何という物質の略？", "ポリエチレンテレフタラート", ["ポリエチレン", "ポリ塩化ビニル", "ポリスチレン"], "PET は polyethylene terephthalate の略。", 2],
+        ["セッケン水の性質は？", "弱い塩基性", ["強い酸性", "中性", "弱い酸性"], "セッケンは弱酸と強塩基からできた塩で、水溶液は弱い塩基性。", 2],
+        ["ビタミンCが長期間不足すると起こる病気は？", "壊血病", ["脚気", "くる病", "夜盲症"], "脚気はビタミンB₁、くる病はD、夜盲症はAの不足。", 2],
+        ["納豆やヨーグルトなどをつくるときの、微生物のはたらきを何という？", "発酵", ["腐敗", "光合成", "蒸散"], "人間に有用なはたらきは発酵、有害なものは腐敗。", 2],
+        ["酸性雨の主な原因となる気体の組み合わせは？", "硫黄酸化物と窒素酸化物", ["二酸化炭素とメタン", "フロンとオゾン", "水素と酸素"], "SOx と NOx が雨に溶けて酸性になる。", 3],
+        ["電子レンジが食品を温めるときに利用する電磁波は？", "マイクロ波", ["X線", "紫外線", "ガンマ線"], "マイクロ波が水の分子を振動させて温める。", 3],
+        ["体内で、病原体などの異物を排除するしくみを何という？", "免疫", ["代謝", "光合成", "発酵"], "白血球などがはたらく。ワクチンは免疫を利用している。", 3],
+        ["光が空気中からガラスに入るとき、進む向きが変わる現象は？", "屈折", ["反射", "吸収", "散乱"], "レンズやプリズムは屈折を利用している。", 3]
+      ],
+      // ---- 歴史総合 ----
+      hist: [
+        ["1853年、浦賀に来航して開国を求めたアメリカの使節は？", "ペリー", ["ハリス", "ラクスマン", "プチャーチン"], "ペリーの来航から日本の開国が始まった。", 1],
+        ["第一次世界大戦が始まった年は？", "1914年", ["1904年", "1918年", "1939年"], "1914年に始まり、1918年に終結。", 1],
+        ["第二次世界大戦が終結した年は？", "1945年", ["1941年", "1939年", "1950年"], "1939年に始まり、1945年に終結。", 1],
+        ["1945年に設立された、国際平和を目的とする国際機構は？", "国際連合", ["国際連盟", "世界貿易機関", "経済協力開発機構"], "国際連盟は第一次世界大戦後の1920年に設立。", 1],
+        ["18世紀後半にイギリスで始まった、機械の導入による社会・経済の大変化は？", "産業革命", ["市民革命", "宗教改革", "農業革命"], "蒸気機関の改良などで工業化が進んだ。", 2],
+        ["1929年のニューヨークの株価暴落から始まった世界的な不況は？", "世界恐慌", ["石油危機", "バブル経済", "高度経済成長"], "各国が不況に苦しみ、ブロック経済などが広がった。", 2],
+        ["日露戦争の講和条約は？", "ポーツマス条約", ["下関条約", "南京条約", "ベルサイユ条約"], "アメリカの仲介で結ばれた。下関条約は日清戦争の講和条約。", 2],
+        ["日本が国際連盟からの脱退を通告した年は？", "1933年", ["1920年", "1931年", "1945年"], "満州事変（1931年）をめぐる対立の後、1933年に脱退。", 2],
+        ["1951年に日本が結んだ、連合国との講和条約は？", "サンフランシスコ平和条約", ["日米修好通商条約", "ポツダム宣言", "日韓基本条約"], "これにより日本は独立を回復した（1952年発効）。", 3],
+        ["アヘン戦争の結果、1842年に清とイギリスが結んだ条約は？", "南京条約", ["天津条約", "北京条約", "下関条約"], "香港島の割譲などが決まった。", 3],
+        ["1989年に崩壊し、冷戦の終結を象徴したものは？", "ベルリンの壁", ["万里の長城", "ハドリアヌスの長城", "38度線"], "東西ドイツの統一（1990年）につながった。", 3],
+        ["1925年に、25歳以上の男子に選挙権を認めた法律は？", "普通選挙法", ["治安維持法", "国家総動員法", "教育勅語"], "同じ年に治安維持法も制定された。", 3]
+      ],
+      // ---- 地理総合 ----
+      geo: [
+        ["経度0度の経線（本初子午線）が通る都市は？", "ロンドン", ["パリ", "ニューヨーク", "東京"], "旧グリニッジ天文台（ロンドン）を通る。", 1],
+        ["日本の標準時の基準になっている経線は？", "東経135度", ["東経120度", "東経140度", "東経150度"], "兵庫県明石市などを通る。", 1],
+        ["緯度0度の線を何という？", "赤道", ["北回帰線", "日付変更線", "本初子午線"], "赤道より北が北半球、南が南半球。", 1],
+        ["世界で面積が最も大きい国は？", "ロシア", ["カナダ", "中国", "アメリカ"], "2位がカナダ。", 1],
+        ["経度15度ごとに生じる時差は？", "1時間", ["15分", "2時間", "24時間"], "地球は24時間で360度回るので、360÷24＝15度で1時間。", 2],
+        ["GIS は何の略？", "地理情報システム", ["全地球測位システム", "世界情報サービス", "地球観測衛星"], "全地球測位システムは GPS。", 2],
+        ["災害の被害予測の範囲や避難場所などを示した地図は？", "ハザードマップ", ["天気図", "白地図", "世界地図"], "自分の地域の危険を知り、備えるために使う。", 2],
+        ["日本の冬に、大陸から吹く季節風の向きは？", "北西", ["南東", "南西", "北東"], "冬は北西、夏は南東の季節風。", 2],
+        ["2015年に国連サミットで採択された、2030年までの国際目標は？", "SDGs（持続可能な開発目標）", ["MDGs（ミレニアム開発目標）", "WTO（世界貿易機関）", "PKO（国連平和維持活動）"], "17の目標がある。MDGs は2000年から2015年までの目標。", 3],
+        ["中心からの距離と方位が正しく表される地図の図法は？", "正距方位図法", ["メルカトル図法", "モルワイデ図法", "ミラー図法"], "航空図などに使われる。メルカトル図法は角度が正しい。", 3],
+        ["中緯度地方の上空を、西から東へ吹く風は？", "偏西風", ["貿易風", "季節風", "極偏東風"], "日本の天気が西から東へ変わるのは偏西風の影響。", 3],
+        ["日本列島が位置する、地震や火山活動が活発な地帯は？", "環太平洋造山帯（環太平洋火山帯）", ["アルプス＝ヒマラヤ造山帯", "大西洋中央海嶺", "安定陸塊"], "太平洋を取り巻くように分布している。", 3]
+      ],
+      // ---- 情報Ⅰ ----
+      info: [
+        ["2進数「101」を10進数で表すと？", "5", ["3", "6", "7"], "1×4＋0×2＋1×1＝5。", 1],
+        ["8ビットは何バイト？", "1バイト", ["8バイト", "2バイト", "16バイト"], "1バイト＝8ビット。", 1],
+        ["本物そっくりの偽サイトに誘導して、個人情報などを盗む詐欺は？", "フィッシング", ["クラウド", "スパム", "ストリーミング"], "メールのリンクから偽サイトに誘導されることが多い。", 1],
+        ["著作権が発生するのはいつ？", "著作物を創作した時点", ["登録した時点", "公開して1年後", "販売した時点"], "登録は不要。創作した時点で自動的に発生する。", 1],
+        ["ドメイン名とIPアドレスを対応づけるしくみは？", "DNS", ["HTTPS", "SMTP", "LAN"], "「○○.jp」のような名前を、数字のIPアドレスに変換する。", 2],
+        ["プログラムの基本構造の組み合わせは？", "順次・分岐・反復", ["入力・出力・保存", "変数・定数・関数", "暗号・復号・認証"], "上から順に実行（順次）、条件で選ぶ（分岐）、繰り返す（反復）。", 2],
+        ["アナログをデジタルに変換する手順の組み合わせは？", "標本化→量子化→符号化", ["符号化→標本化→量子化", "量子化→符号化→標本化", "圧縮→暗号化→送信"], "一定間隔で値をとり、整数に丸め、2進数にする。", 2],
+        ["論理演算 AND の結果が1（真）になるのは？", "どちらの入力も1のとき", ["どちらか一方が1のとき", "どちらも0のとき", "2つの入力が異なるとき"], "OR は少なくとも一方が1のとき。", 2],
+        ["10進数の13を2進数で表すと？", "1101", ["1011", "1110", "1001"], "13＝8＋4＋1 ＝ 1101（2進数）。", 3],
+        ["通信が暗号化されていることを示す、Webのプロトコルは？", "HTTPS", ["HTTP", "FTP", "SMTP"], "HTTPS では、アドレスバーに鍵のマークが出る。", 3],
+        ["表計算ソフトで、範囲の平均を求める関数は？", "AVERAGE", ["SUM", "COUNT", "MAX"], "SUM は合計、COUNT は個数、MAX は最大値。", 3],
+        ["パスワードの管理として、最も適切なのは？", "サービスごとに、長くて複雑なものを使う", ["同じものを使い回す", "誕生日にする", "紙に書いて画面に貼る"], "使い回すと、1つ漏れただけで他のサービスも危険になる。", 3]
+      ],
+      // ---- 保健 ----
+      health: [
+        ["119番は、何のための通報先？", "消防・救急", ["警察", "災害情報", "天気予報"], "110番が警察。", 1],
+        ["AED は何という機器？", "自動体外式除細動器", ["自動体温測定器", "全自動血圧計", "緊急用呼吸器"], "心臓が止まりかけたとき、電気ショックで心臓の動きを戻す。", 1],
+        ["三大栄養素に含まれないものは？", "ビタミン", ["炭水化物", "脂質", "たんぱく質"], "三大栄養素は炭水化物・脂質・たんぱく質。ビタミンとミネラルを加えて五大栄養素。", 1],
+        ["日本で、飲酒・喫煙が法律で禁止されているのは何歳未満？", "20歳未満", ["18歳未満", "16歳未満", "15歳未満"], "成年年齢が18歳になっても、飲酒・喫煙は20歳未満は禁止のまま。", 1],
+        ["タバコの煙に含まれる、依存性のある成分は？", "ニコチン", ["カフェイン", "アルコール", "ビタミン"], "ほかに一酸化炭素やタールなどの有害物質も含まれる。", 2],
+        ["生活習慣病に含まれるものは？", "糖尿病", ["インフルエンザ", "はしか（麻疹）", "結核"], "ほかに高血圧症や脂質異常症など。ほかの3つは感染症。", 2],
+        ["感染症の予防として、適切なものは？", "手洗いと予防接種", ["薬を多めに飲む", "睡眠時間を減らす", "症状が出てから運動する"], "手洗いで病原体を減らし、予防接種で免疫をつける。", 2],
+        ["ストレスの原因となる刺激を何という？", "ストレッサー", ["ストレッチャー", "アレルゲン", "ホルモン"], "ストレッサーによって心身に起こる反応がストレス反応。", 2],
+        ["成人への心肺蘇生で、胸骨圧迫のテンポの目安は1分間に何回？", "100〜120回", ["60〜80回", "140〜160回", "30〜50回"], "強く（約5cm）、速く、絶え間なく圧迫する。", 3],
+        ["成人への胸骨圧迫の深さの目安は？", "約5cm", ["約1〜2cm", "約8〜10cm", "約15cm"], "約5cm沈むように。ただし6cmは超えない。", 3],
+        ["人々が自らの健康をコントロールし、改善できるようにするというWHOの考え方は？", "ヘルスプロモーション", ["インフォームドコンセント", "ノーマライゼーション", "ワクチネーション"], "1986年のオタワ憲章で提唱された。", 3],
+        ["熱中症の応急手当として、適切なものは？", "涼しい場所で体を冷やし、水分と塩分をとる", ["厚着をして汗をかく", "水分をとらずに安静にする", "日なたで体を動かす"], "意識がはっきりしないときは、すぐに救急車を呼ぶ。", 3]
+      ]
+    };
+
+    // 最近出した問題を覚えておいて、続けて同じ問題が出ないようにする
+    const recentBank = {};
+    function genFromBank(topicId, diff) {
+      const bank = bankData[topicId];
+      const maxLv = diff <= 1 ? 1 : diff === 2 ? 2 : 3;
+      let idxs = bank.map((_, i) => i).filter(i => bank[i][4] <= maxLv);
+      if (idxs.length < 4) idxs = bank.map((_, i) => i);
+      const recent = recentBank[topicId] || (recentBank[topicId] = []);
+      let cands = idxs.filter(i => !recent.includes(i));
+      if (cands.length === 0) { recent.length = 0; cands = idxs; }
+      const i = pick(cands);
+      recent.push(i);
+      if (recent.length > 8) recent.shift();
+      const item = bank[i];
+      return { q: item[0], answer: item[1], options: shuffle([item[1]].concat(item[2])), explain: item[3] };
+    }
+
+    // ===== 単元（問題の種類）の一覧 =====
+    // subject : どの教科（タイプ）か
+    // 数学は、単元ごとに数字をランダムに変えて作る。ほかの教科は、上の問題集から出す。
+    const topicData = {
+      expand:       { id: "expand",       subject: "math1", name: "展開",           gen: genExpand },
+      factor:       { id: "factor",       subject: "math1", name: "因数分解",       gen: genFactor },
+      linearIneq:   { id: "linearIneq",   subject: "math1", name: "一次不等式",     gen: genLinearIneq },
+      abs:          { id: "abs",          subject: "math1", name: "絶対値",         gen: genAbs },
+      quadVertex:   { id: "quadVertex",   subject: "math1", name: "二次関数の頂点", gen: genQuadVertex },
+      discriminant: { id: "discriminant", subject: "math1", name: "判別式",         gen: genDiscriminant },
+      trig:         { id: "trig",         subject: "math1", name: "三角比",         gen: genTrig },
+      data:         { id: "data",         subject: "math1", name: "データの分析",   gen: genData },
+      combi:        { id: "combi",        subject: "mathA", name: "順列・組合せ",   gen: genCombi },
+      prob:         { id: "prob",         subject: "mathA", name: "確率",           gen: genProb },
+      lit:    { id: "lit",    subject: "lit",    name: "言語文化",       gen: d => genFromBank("lit", d) },
+      kanji:  { id: "kanji",  subject: "kanji",  name: "現代の国語",     gen: d => genFromBank("kanji", d) },
+      eng:    { id: "eng",    subject: "eng",    name: "コミュ英Ⅰ",      gen: d => genFromBank("eng", d) },
+      logic:  { id: "logic",  subject: "logic",  name: "論理表現Ⅰ",      gen: d => genFromBank("logic", d) },
+      chem:   { id: "chem",   subject: "chem",   name: "化学基礎",       gen: d => genFromBank("chem", d) },
+      sci:    { id: "sci",    subject: "sci",    name: "科学と人間生活", gen: d => genFromBank("sci", d) },
+      hist:   { id: "hist",   subject: "hist",   name: "歴史総合",       gen: d => genFromBank("hist", d) },
+      geo:    { id: "geo",    subject: "geo",    name: "地理総合",       gen: d => genFromBank("geo", d) },
+      info:   { id: "info",   subject: "info",   name: "情報Ⅰ",          gen: d => genFromBank("info", d) },
+      health: { id: "health", subject: "health", name: "保健",           gen: d => genFromBank("health", d) }
+    };
+
+    // 画面に出す単元名（例：「➗ 数学Ⅰ・展開」「🧪 化学基礎」）
+    function topicLabel(topicId) {
+      const t = topicData[topicId], s = subjectData[t.subject];
+      return `${s.icon} ${s.name}` + (t.name === s.name ? "" : `・${t.name}`);
+    }
 
     // 通常ステージの問題の難しさ（出る単元は、使う技で決まる）
     const stageConfig = {
@@ -842,7 +1106,7 @@
     // source: { topics: ["expand", "factor"], diff: 2 }
     //   topics の中からランダムに1単元を選んで出題する。
     //   技を使うときは、topics にその技の単元を1つだけ入れて呼ぶ。
-    // 戻り値: { q, options, answer, explain, topicId, topicName }
+    // 戻り値: { q, options, answer, explain, topicId, topicName, subjectId }
     let lastTopicId = null;
     function getQuestion(source) {
       let ids = source.topics.filter(id => topicData[id]);
@@ -851,7 +1115,7 @@
       lastTopicId = id;
       const t = topicData[id];
       const g = t.gen(source.diff || 1);
-      return { q: g.q, options: g.options, answer: g.answer, explain: g.explain || "", topicId: id, topicName: t.name };
+      return { q: g.q, options: g.options, answer: g.answer, explain: g.explain || "", topicId: id, topicName: t.name, subjectId: t.subject };
     }
 
     // 正解かどうかを判定する
@@ -862,9 +1126,10 @@
     // =====================================================
     // 技データ
     // 技は「どの単元の問題に答えるか」と「威力」を持つ。
+    // 技のタイプは、単元の教科（topicData の subject）で決まる。
     //   name    : 技の名前（自由に変えてOK）
     //   topicId : 出題される単元（topicData のID）
-    //   power   : 威力の倍率。ダメージ = ガクモンの攻撃力 × power
+    //   power   : 威力の倍率。ダメージ = ガクモンの攻撃力 × power × タイプ相性 × 弱点
     //   uses    : 1回のバトル（ダンジョンは1回の挑戦）で使える回数
     // ガクモンがどの技を使えるかは、monsterData の moves に技IDを並べて決める。
     // =====================================================
@@ -878,7 +1143,18 @@
       mv_data:         { id: "mv_data",         name: "データストーム",       topicId: "data",         power: 1.3, uses: 4 },
       mv_trig:         { id: "mv_trig",         name: "サインコサインざん",   topicId: "trig",         power: 1.6, uses: 3 },
       mv_combi:        { id: "mv_combi",        name: "くみあわせラッシュ",   topicId: "combi",        power: 1.6, uses: 3 },
-      mv_prob:         { id: "mv_prob",         name: "かくりつルーレット",   topicId: "prob",         power: 1.6, uses: 3 }
+      mv_prob:         { id: "mv_prob",         name: "かくりつルーレット",   topicId: "prob",         power: 1.6, uses: 3 },
+      // --- ほかの教科の技 ---
+      mv_kanji:        { id: "mv_kanji",        name: "カンジストライク",     topicId: "kanji",        power: 1.0, uses: 5 },
+      mv_eng:          { id: "mv_eng",          name: "ワードバレット",       topicId: "eng",          power: 1.0, uses: 5 },
+      mv_sci:          { id: "mv_sci",          name: "サイエンスウェーブ",   topicId: "sci",          power: 1.0, uses: 5 },
+      mv_health:       { id: "mv_health",       name: "ヘルシーパンチ",       topicId: "health",       power: 1.0, uses: 5 },
+      mv_lit:          { id: "mv_lit",          name: "コテンスラッシュ",     topicId: "lit",          power: 1.3, uses: 4 },
+      mv_logic:        { id: "mv_logic",        name: "イディオムキャノン",   topicId: "logic",        power: 1.3, uses: 4 },
+      mv_geo:          { id: "mv_geo",          name: "ジオクエイク",         topicId: "geo",          power: 1.3, uses: 4 },
+      mv_info:         { id: "mv_info",         name: "ビットブレイク",       topicId: "info",         power: 1.3, uses: 4 },
+      mv_chem:         { id: "mv_chem",         name: "ケミカルバースト",     topicId: "chem",         power: 1.6, uses: 3 },
+      mv_hist:         { id: "mv_hist",         name: "ヒストリーインパクト", topicId: "hist",         power: 1.6, uses: 3 }
     };
 
     // パートナーがいないときに使える技
@@ -971,18 +1247,34 @@
       const list = document.getElementById("stats-list");
       list.innerHTML = "";
       sorted.forEach(id => {
-        const t = topicData[id], s = topicStats[id], lv = topicLevel(id);
+        const s = topicStats[id], lv = topicLevel(id);
         const recent = s ? s.recent : [];
         const ok = recent.reduce((a, b) => a + b, 0);
         const pct = recent.length ? Math.round(ok / recent.length * 100) : 0;
         const row = document.createElement("div");
         row.className = "stats-row";
         row.innerHTML = `
-          <div class="stats-head"><b>${t.name}</b><span>${STATS_LABEL[lv]}</span></div>
+          <div class="stats-head"><b>${topicLabel(id)}</b><span>${STATS_LABEL[lv]}</span></div>
           <div class="stats-bar"><div class="stats-fill stats-fill-${lv}" style="width:${pct}%"></div></div>
           <small>直近 ${ok}/${recent.length}回 ／ 累計 ${s ? s.c : 0}/${s ? s.c + s.w : 0}問</small>
         `;
         list.appendChild(row);
+      });
+      renderTypeChart();
+    }
+
+    // タイプ相性表（成績画面の下に出す）
+    function renderTypeChart() {
+      const box = document.getElementById("type-chart");
+      box.innerHTML = "";
+      Object.keys(subjectData).forEach(id => {
+        const s = subjectData[id];
+        const strong = TYPE_BEATS[id].map(x => subjectData[x].icon + subjectData[x].name).join("・");
+        const weak = Object.keys(TYPE_BEATS).filter(x => TYPE_BEATS[x].includes(id)).map(x => subjectData[x].icon + subjectData[x].name).join("・");
+        const row = document.createElement("div");
+        row.className = "stats-row";
+        row.innerHTML = `<b>${s.icon} ${s.name}</b><br><small>◎抜群：${strong}<br>△いまひとつ：${weak}</small>`;
+        box.appendChild(row);
       });
     }
 
@@ -1027,7 +1319,7 @@
 
       document.getElementById("review-qarea").classList.remove("hidden");
       document.getElementById("review-progress").innerText = `第 ${rs.index + 1} / ${REVIEW_COUNT} 問`;
-      document.getElementById("review-topic").innerText = `【${rs.quiz.topicName}】`;
+      document.getElementById("review-topic").innerText = topicLabel(rs.quiz.topicId);
       document.getElementById("review-question").innerText = "問題: " + rs.quiz.q;
       document.getElementById("review-feedback").innerText = "";
       document.getElementById("review-next").classList.add("hidden");
@@ -1204,18 +1496,20 @@
     //   name     : 画面に表示される名前（自由に書き換えてOK）
     //   img      : 画像のファイル名
     //   aura     : 枠の見た目（N / R / SR）
+    //   type     : 敵のタイプ（教科ID。subjectData のID）。書かなければタイプなし。
+    //              タイプ相性で、技のダメージが ×1.5（抜群）や ×0.75（いまひとつ）になる。
     //   weakness : 弱点の単元ID（topicData のID）。書かなければ弱点なし。
     //              弱点の単元の問題に正解すると、ダメージが WEAKNESS_MULT 倍になる。
     // 敵を増やすときは、ここに1行足して、下の
     // stageEnemies / dungeonData の enemies にIDを追加する。
     //
     // 【追加の見本】
-    // "e4": { id: "e4", name: "名前", img: "./画像のファイル名.png", aura: "N", weakness: "prob" },
+    // "e4": { id: "e4", name: "名前", img: "./画像のファイル名.png", aura: "N", type: "hist", weakness: "prob" },
     // =====================================================
     const enemyData = {
-      "e1": { id: "e1", name: "サボスラ",     img: "./IMG_1414.png",  aura: "N",  weakness: "linearIneq" },
-      "e2": { id: "e2", name: "ヨフカバット", img: "./IMG_0018.webp", aura: "R",  weakness: "factor" },
-      "e3": { id: "e3", name: "ダラニャン",   img: "./IMG_0019.webp", aura: "SR", weakness: "prob" }
+      "e1": { id: "e1", name: "サボスラ",     img: "./IMG_1414.png",  aura: "N",  type: "info",   weakness: "linearIneq" },
+      "e2": { id: "e2", name: "ヨフカバット", img: "./IMG_0018.webp", aura: "R",  type: "health", weakness: "factor" },
+      "e3": { id: "e3", name: "ダラニャン",   img: "./IMG_0019.webp", aura: "SR",                  weakness: "prob" }
     };
 
     // ステージごとに出る敵（複数あればランダム）
@@ -1263,7 +1557,13 @@
       return e && e.weakness ? e.weakness : null;
     }
 
-    // 敵の名前・画像・枠・弱点を切り替える
+    // いま戦っている敵のタイプ（教科）。なければ null
+    function currentEnemyType() {
+      const e = enemyData[currentEnemyId];
+      return e && e.type ? e.type : null;
+    }
+
+    // 敵の名前・画像・枠・タイプ・弱点を切り替える
     function setEnemy(id) {
       const e = enemyData[id];
       if (!e) return;
@@ -1272,6 +1572,8 @@
       const img = document.getElementById("enemy-battle-img");
       img.src = e.img;
       img.className = `fighter-img aura-${e.aura || "N"}`;
+      const typeEl = document.getElementById("enemy-type");
+      typeEl.innerText = (e.type && subjectData[e.type]) ? `タイプ：${subjectData[e.type].icon} ${subjectData[e.type].name}` : "タイプ：なし";
       const weakEl = document.getElementById("enemy-weak");
       weakEl.innerText = (e.weakness && topicData[e.weakness]) ? `🎯 弱点：${topicData[e.weakness].name}` : "";
     }
@@ -1588,13 +1890,16 @@
       const box = document.getElementById("move-list");
       box.innerHTML = "";
       const enemyWeak = currentEnemyWeakness();
+      const enemyType = currentEnemyType();
       getPartnerMoves().forEach(m => {
         const left = moveUses[m.id];
         const btn = document.createElement("button");
         btn.className = "btn btn-move";
         const weak = topicLevel(m.topicId) === "weak" ? " 😣苦手" : "";
         const hitWeak = (enemyWeak && m.topicId === enemyWeak) ? " 🎯弱点" : "";
-        btn.innerHTML = `${m.name}<br><small>【${topicData[m.topicId].name}】${hitWeak}${weak} 威力 ×${m.power} ／ 残り ${left}/${m.uses}回</small>`;
+        const tm = typeMultiplier(topicData[m.topicId].subject, enemyType);
+        const typeNote = tm > 1 ? " ◎効果抜群" : tm < 1 ? " △いまひとつ" : "";
+        btn.innerHTML = `${m.name}<br><small>${topicLabel(m.topicId)}<br>${typeNote}${hitWeak}${weak} 威力 ×${m.power} ／ 残り ${left}/${m.uses}回</small>`;
         if (left > 0) {
           btn.onclick = () => useMove(m.id);
         } else {
@@ -1635,7 +1940,7 @@
 
       document.getElementById("move-select").classList.add("hidden");
       document.getElementById("question-area").classList.remove("hidden");
-      document.getElementById("topic-label").innerText = `⚡ ${m.name}【${currentQuiz.topicName}】`;
+      document.getElementById("topic-label").innerText = `⚡ ${m.name}　${topicLabel(currentQuiz.topicId)}`;
       document.getElementById("question").innerText = "問題: " + currentQuiz.q;
 
       const optionsDiv = document.getElementById("options");
@@ -1664,12 +1969,12 @@
       recordAnswer(currentQuiz.topicId, isCorrect); // 成績に記録
 
       if (isCorrect) {
-        let damage = Math.round(playerATK * currentMove.power);
-
-        // 敵の弱点の単元の問題に正解したら、ダメージが増える
+        // ダメージ ＝ 攻撃力 × 技の威力 × タイプ相性 × 弱点
+        const attackSubject = topicData[currentQuiz.topicId].subject;
+        const typeMult = typeMultiplier(attackSubject, currentEnemyType());
         const weakTopic = currentEnemyWeakness();
         const isWeak = !!weakTopic && currentQuiz.topicId === weakTopic;
-        if (isWeak) damage = Math.round(damage * WEAKNESS_MULT);
+        let damage = Math.round(playerATK * currentMove.power * typeMult * (isWeak ? WEAKNESS_MULT : 1));
 
         let isCritical = false;
         if (partner && partner.rarity === "SR" && Math.random() < 0.3) {
@@ -1680,10 +1985,12 @@
         enemyHP -= damage;
         if (enemyHP < 0) enemyHP = 0;
 
-        let head = "✨";
-        if (isCritical && isWeak) head = "💥🎯 会心の一撃＆弱点！";
-        else if (isCritical) head = "💥 会心の一撃！";
-        else if (isWeak) head = "🎯 弱点を突いた！";
+        const notes = [];
+        if (isCritical) notes.push("💥 会心の一撃！");
+        if (isWeak) notes.push("🎯 弱点を突いた！");
+        if (typeMult > 1) notes.push("◎ 効果抜群！");
+        if (typeMult < 1) notes.push("△ いまひとつ…");
+        const head = notes.length ? notes.join(" ") : "✨";
 
         message.style.color = "green";
         message.innerText = `${head} ${moveName}が命中！ 敵に${damage}ダメージ！`;
