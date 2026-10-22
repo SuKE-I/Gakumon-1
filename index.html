@@ -5,20 +5,150 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ガクモン - 対戦×勉強</title>
   <style>
+    html {
+      background-color: #f0f4f8;
+    }
     body {
       font-family: sans-serif;
       text-align: center;
-      background-color: #f0f4f8;
+      background: transparent;
       padding: 20px;
     }
+    /* どの画面にも、教室の画像を薄く敷く */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: -1;
+      background: linear-gradient(rgba(240,244,248,0.62), rgba(240,244,248,0.62)), url("./IMG_1001.webp") center / cover no-repeat;
+    }
     .card {
-      background: white;
+      background: rgba(255,255,255,0.96);
       max-width: 420px;
       margin: 0 auto;
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
+
+    /* ホーム画面 */
+    #home-screen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 100;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #cfe8ff url("./IMG_1001.webp") center / cover no-repeat;
+      padding: calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
+      box-sizing: border-box;
+    }
+    .home-inner {
+      max-width: 480px;
+      min-height: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .home-title {
+      font-size: 44px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #fff;
+      text-shadow: 0 3px 0 #3b6fd8, 0 0 12px rgba(59,111,216,0.6), 0 6px 14px rgba(0,0,0,0.35);
+    }
+    .home-sub {
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.45);
+      margin-top: 2px;
+    }
+    .home-status {
+      display: inline-flex;
+      gap: 14px;
+      margin-top: 10px;
+      background: rgba(255,255,255,0.88);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #2d3436;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+    .home-partner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255,255,255,0.85);
+      border-radius: 20px;
+      padding: 12px 14px;
+      text-align: left;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    }
+    .home-monster {
+      width: 110px;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 16px;
+      background: #fff;
+      flex-shrink: 0;
+      animation: floaty 2.6s ease-in-out infinite;
+    }
+    .home-monster-info {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #2d3436;
+    }
+    .home-hint {
+      margin-top: 10px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 14px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #6c5ce7;
+      white-space: pre-line;
+    }
+    .home-menu {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .home-btn {
+      padding: 14px 6px;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.4;
+      color: #2d3436;
+      background: rgba(255,255,255,0.88);
+      border: 2px solid #fff;
+      border-radius: 18px;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.18);
+      cursor: pointer;
+    }
+    .home-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.18);
+    }
+    .home-btn span {
+      font-size: 26px;
+      display: block;
+    }
+    .home-version {
+      font-size: 11px;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+    @keyframes floaty {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .home-monster { animation: none; }
+    }
+
     .status-bar {
       background: #eef2f5;
       padding: 10px;
@@ -310,7 +440,38 @@
 </head>
 <body>
 
-  <div class="card">
+  <!-- ホーム画面（起動したときに最初に出る） -->
+  <div id="home-screen">
+    <div class="home-inner">
+      <div>
+        <div class="home-title">ガクモン</div>
+        <div class="home-sub">⚔️ 対戦 × 勉強 ⚔️</div>
+        <div class="home-status">
+          <span>🎓 <b id="home-points">0</b> pt</span>
+          <span>🧊 <b id="home-cubes">0</b> 個</span>
+        </div>
+      </div>
+
+      <div>
+        <div id="home-partner" class="home-partner"></div>
+        <div id="home-hint" class="home-hint"></div>
+      </div>
+
+      <div>
+        <div class="home-menu">
+          <button class="home-btn" onclick="switchTab('stage')"><span>⚔️</span>ステージ</button>
+          <button class="home-btn" onclick="switchTab('dungeon')"><span>🏰</span>ダンジョン</button>
+          <button class="home-btn" onclick="switchTab('gacha')"><span>🎁</span>ガチャ</button>
+          <button class="home-btn" onclick="switchTab('list')"><span>📜</span>ガクモン</button>
+          <button class="home-btn" onclick="switchTab('stats')"><span>📊</span>成績</button>
+          <button class="home-btn" onclick="startReview()"><span>🔁</span>復習</button>
+        </div>
+        <div id="home-version" class="home-version" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="app-card">
     <h1>⚔️ ガクモン ⚔️</h1>
     
     <!-- プレイヤーのステータス表示 -->
@@ -329,6 +490,7 @@
 
     <!-- メニュータブ -->
     <div class="nav-tabs">
+      <button class="nav-btn" id="tab-home" onclick="switchTab('home')">🏠<br>ホーム</button>
       <button class="nav-btn active" id="tab-stage" onclick="switchTab('stage')">⚔️<br>ステージ</button>
       <button class="nav-btn" id="tab-dungeon" onclick="switchTab('dungeon')">🏰<br>ダンジョン</button>
       <button class="nav-btn" id="tab-gacha" onclick="switchTab('gacha')">🎁<br>ガチャ</button>
@@ -468,7 +630,7 @@
 
   <script>
     // バージョン（コードを更新したら、ここを書き換えると、画面の下の表示が変わる）
-    const GAME_VERSION = "2026.10.16-C（教科別ステージ・敵の攻撃タイプ・弱点の廃止）";
+    const GAME_VERSION = "2026.10.16-D（ホーム画面）";
 
     // プレイヤーデータ
     let userPoints = 0;
@@ -1742,6 +1904,7 @@
     }
 
     function startReview() {
+      hideHome();
       reviewState = { index: 0, correct: 0, gained: 0, topics: pickReviewTopics(), quiz: null, answered: false, finished: false };
       ["stats-screen", "stage-select-screen", "subject-stages-screen", "dungeon-select-screen", "battle-screen", "gacha-screen", "list-screen"]
         .forEach(id => document.getElementById(id).classList.add("hidden"));
@@ -1886,6 +2049,52 @@
     }
 
     // =====================================================
+    // ホーム画面
+    // 起動したときに最初に出る画面。教室の背景の上に、パートナーとメニューを出す。
+    // =====================================================
+    function showHome() {
+      document.getElementById("home-screen").classList.remove("hidden");
+      document.getElementById("app-card").classList.add("hidden");
+      renderHome();
+    }
+    function hideHome() {
+      document.getElementById("home-screen").classList.add("hidden");
+      document.getElementById("app-card").classList.remove("hidden");
+    }
+    function renderHome() {
+      document.getElementById("home-points").innerText = userPoints;
+      document.getElementById("home-cubes").innerText = userCubes;
+
+      // パートナー
+      const box = document.getElementById("home-partner");
+      const partner = getMonsterStats(partnerId);
+      if (partner) {
+        const s = subjectData[partner.type];
+        const typeText = s ? `${s.icon} ${s.name}` : "なし";
+        box.innerHTML = `
+          <img class="home-monster aura-${partner.rarity}" src="${partner.img}" alt="${partner.name}">
+          <div class="home-monster-info">
+            <span class="rarity-${partner.rarity}">[${partner.rarity}]</span> <b>${partner.name}</b><br>
+            <small>Lv.${partner.level} ／ HP ${partner.hp} ／ 攻 ${partner.atk}</small><br>
+            <small>タイプ：${typeText}</small>
+          </div>`;
+      } else {
+        box.innerHTML = `<div class="home-monster-info">まだガクモンがいないよ<br><small>🎁 ガチャでパートナーを手に入れよう！</small></div>`;
+      }
+
+      // ひとこと（苦手な単元があれば、復習をすすめる）
+      const ids = Object.keys(topicData);
+      const weakIds = ids.filter(id => topicLevel(id) === "weak").sort((a, b) => topicAccuracy(a) - topicAccuracy(b));
+      const tried = ids.some(id => topicAccuracy(id) !== null);
+      let hint;
+      if (!partner) hint = "まずは、ガチャでガクモンを手に入れよう！";
+      else if (weakIds.length > 0) hint = `📝 苦手な単元：${weakIds.slice(0, 2).map(id => topicLabel(id)).join("、")}\n「🔁 復習」で、伸ばそう！`;
+      else if (!tried) hint = "ステージに挑戦して、勉強をはじめよう！";
+      else hint = "いい調子！ 今日も勉強を続けよう！";
+      document.getElementById("home-hint").innerText = hint;
+    }
+
+    // =====================================================
     // 画面（タブ）の切り替え
     // =====================================================
     const SCREEN_OF_TAB = {
@@ -1897,6 +2106,8 @@
     };
     function switchTab(tabName) {
       reviewState = null; // 復習の途中でタブを切り替えたら、復習は終了
+      if (tabName === "home") { showHome(); return; }
+      hideHome();
       ["stage-select-screen", "subject-stages-screen", "dungeon-select-screen", "battle-screen", "gacha-screen", "list-screen", "stats-screen", "review-screen"]
         .forEach(id => document.getElementById(id).classList.add("hidden"));
       Object.keys(SCREEN_OF_TAB).forEach(t => document.getElementById("tab-" + t).classList.remove("active"));
@@ -2136,9 +2347,11 @@
     // ロード
     window.onload = function() {
       document.getElementById("version").innerText = "バージョン：" + GAME_VERSION;
+      document.getElementById("home-version").innerText = "バージョン：" + GAME_VERSION;
       renderDungeonList();
       loadData();
       renderSubjectGrid();
+      showHome(); // 最初はホーム画面から
     };
 
     function loadData() {
@@ -2224,6 +2437,7 @@
       document.getElementById("player-hp-fill").style.width = Math.max(0, (playerHP / playerMaxHP) * 100) + "%";
 
       renderMonsterList();
+      renderHome();
     }
 
     // パートナー変更
